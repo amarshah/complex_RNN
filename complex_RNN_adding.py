@@ -154,12 +154,16 @@ def complex_RNN(n_input, n_hidden, n_output, scale_penalty):
             input_im = input[:, n_hidden:]
             reflect_re = reflection[n_hidden:]
             reflect_im = reflection[:n_hidden]
-            
+
             vstarv = (reflect_re**2 + reflect_im**2).sum()
-            input_re_reflect = input_re - 2 / vstarv * (T.outer(T.dot(input_re, reflect_re), reflect_re) +
-                                                        T.outer(T.dot(input_im, reflect_im), reflect_im))
-            input_im_reflect = input_im - 2 / vstarv * (-T.outer(T.dot(input_re, reflect_im), reflect_im) +
-                                                        T.outer(T.dot(input_im, reflect_re), reflect_re))
+            input_re_reflect = input_re - 2 / vstarv * (T.outer(T.dot(input_re, reflect_re), reflect_re) 
+                                                        + T.outer(T.dot(input_re, reflect_im), reflect_im) 
+                                                        - T.outer(T.dot(input_im, reflect_im), reflect_re) 
+                                                        + T.outer(T.dot(input_im, reflect_re), reflect_im))
+            input_im_reflect = input_im - 2 / vstarv * (T.outer(T.dot(input_im, reflect_re), reflect_re) 
+                                                        + T.outer(T.dot(input_im, reflect_im), reflect_im) 
+                                                        + T.outer(T.dot(input_re, reflect_im), reflect_re) 
+                                                        - T.outer(T.dot(input_re, reflect_re), reflect_im))
 
             return T.concatenate([input_re_reflect, input_im_reflect], axis=1)      
 
@@ -418,8 +422,8 @@ if __name__=="__main__":
               'n_hidden': 512,
               'time_steps': 200,
               'learning_rate': np.float32(0.001),
-              'savefile': '/data/lisatmp3/shahamar/2015-10-29-adding-200-fft-noscale.pkl',
-              'scale_penalty': 10,
+              'savefile': '/data/lisatmp3/shahamar/2015-10-30-adding-200-fft-5scalepen.pkl',
+              'scale_penalty': 5,
               'use_scale': True}
 
     main(**kwargs)
