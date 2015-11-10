@@ -577,5 +577,3 @@ def complex_RNN(n_input, n_hidden, n_output, scale_penalty, out_every_t=False, l
 
 
     return [x, y], parameters, costs
-
-
