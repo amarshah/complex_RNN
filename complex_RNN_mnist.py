@@ -6,6 +6,8 @@ from fftconv import cufft, cuifft
 import numpy as np
 import theano.tensor as T
 from theano.ifelse import ifelse
+from other_models import *
+from complex_RNN_LSTM import *
 
 
 class HadamardOp(theano.Op):
@@ -152,8 +154,8 @@ def complex_RNN(n_input, n_hidden, n_output, scale_penalty):
         def times_reflection(input, n_hidden, reflection):
             input_re = input[:, :n_hidden]
             input_im = input[:, n_hidden:]
-            reflect_re = reflection[n_hidden:]
-            reflect_im = reflection[:n_hidden]
+            reflect_re = reflection[:n_hidden]
+            reflect_im = reflection[n_hidden:]
 
             vstarv = (reflect_re**2 + reflect_im**2).sum()
             input_re_reflect = input_re - 2 / vstarv * (T.outer(T.dot(input_re, reflect_re), reflect_re) 
@@ -256,6 +258,7 @@ def complex_RNN(n_input, n_hidden, n_output, scale_penalty):
 
     # compute accuracy
     accuracy = T.mean(T.eq(T.argmax(RNN_output, axis=-1), T.argmax(y, axis=-1)))
+    accuracy = T.mean(T.eq(T.argmax(RNN_output, axis=-1), T.argmax(y, axis=-1)))
 
     #    accuracy = y[:, T.argmax(RNN_output, axis=1)].mean()
 
@@ -266,7 +269,7 @@ def complex_RNN(n_input, n_hidden, n_output, scale_penalty):
     return [x, y], parameters, costs
 
  
-def clipped_gradients(grad_clip, gradients):
+def clipped_gradients(gradients, gradient_clipping):
     clipped_grads = [T.clip(g, -gradient_clipping, gradient_clipping)
                      for g in gradients]
     return clipped_grads
@@ -300,11 +303,13 @@ def rms_prop(learning_rate, parameters, gradients):
 
 # Warning: assumes n_batch is a divisor of number of data points
 # Suggestion: preprocess outputs to have norm 1 at each time step
-def main(n_iter, n_batch, n_hidden, time_steps, learning_rate, savefile, scale_penalty, use_scale):
+def main(n_iter, n_batch, n_hidden, time_steps, learning_rate, savefile, scale_penalty, use_scale, reload_progress, model, n_hidden_lstm):
 
+
+
+    np.random.seed(1234)
     #import pdb; pdb.set_trace()
     # --- Set optimization params --------
-    gradient_clipping = np.float32(50000)
 
     # --- Set data params ----------------
     n_input = 1
@@ -342,18 +347,44 @@ def main(n_iter, n_batch, n_hidden, time_steps, learning_rate, savefile, scale_p
     temp[np.arange(n_data_valid), valid_y] = 1
     valid_y = temp.astype('float32')
     
-    
+    # Random permutation of pixels
+    P = np.random.permutation(time_steps)
+    train_x = train_x[P, :, :]
+    valid_x = valid_x[P, :, :]
 
    #######################################################################
 
     # --- Compile theano graph and gradients
  
-    inputs, parameters, costs = complex_RNN(n_input, n_hidden, n_output, scale_penalty)
+    gradient_clipping = np.float32(1)
+    if (model == 'LSTM'):   
+        inputs, parameters, costs = LSTM(n_input, n_hidden, n_output)
+    elif (model == 'complex_RNN'):
+        gradient_clipping = np.float32(100000)
+        inputs, parameters, costs = complex_RNN(n_input, n_hidden, n_output, scale_penalty)
+    elif (model == 'complex_RNN_LSTM'):
+        inputs, parameters, costs = complex_RNN_LSTM(n_input, n_hidden, n_hidden_lstm, n_output, scale_penalty)
+    elif (model == 'IRNN'):
+        inputs, parameters, costs = IRNN(n_input, n_hidden, n_output)
+    elif (model == 'RNN'):
+        inputs, parameters, costs = RNN(n_input, n_hidden, n_output)
+    else:
+        print "Unsuported model:", model
+        return
+
+   
+    
     if not use_scale:
         parameters.pop() 
    
     gradients = T.grad(costs[0], parameters)
 
+#   GRADIENT CLIPPING
+    gradients = gradients[:7] + [T.clip(g, -gradient_clipping, gradient_clipping)
+            for g in gradients[7:]]
+    
+#    gradients = clipped_gradients(gradients, gradient_clipping)
+ 
     s_train_x = theano.shared(train_x)
     s_train_y = theano.shared(train_y)
 
@@ -364,6 +395,9 @@ def main(n_iter, n_batch, n_hidden, time_steps, learning_rate, savefile, scale_p
     # --- Compile theano functions --------------------------------------------------
 
     index = T.iscalar('i')
+
+
+    
 
     updates, rmsprop = rms_prop(learning_rate, parameters, gradients)
 
@@ -378,9 +412,12 @@ def main(n_iter, n_batch, n_hidden, time_steps, learning_rate, savefile, scale_p
     train = theano.function([index], [costs[0], costs[2]], givens=givens, updates=updates)
     valid = theano.function([], [costs[1], costs[2]], givens=givens_valid)
 
+    #import pdb; pdb.set_trace()
+
     # --- Training Loop ---------------------------------------------------------------
     train_loss = []
     test_loss = []
+    test_acc = []
     best_params = [p.get_value() for p in parameters]
     best_test_loss = 1e6
     for i in xrange(n_iter):
@@ -393,24 +430,27 @@ def main(n_iter, n_batch, n_hidden, time_steps, learning_rate, savefile, scale_p
         print "accurracy", acc * 100
         print
 
-        if (i % 25==0):
-            [mse, cross_entropy] = valid()
+        if (i % 100==0):
+            [valid_cross_entropy, valid_acc] = valid()
             print
             print "VALIDATION"
-            print "cross_entropy:", cross_entropy
-            print "accurracy", acc*100
+            print "cross_entropy:", valid_cross_entropy
+            print "accurracy", valid_acc * 100
             print 
-            test_loss.append(mse)
+            test_loss.append(valid_cross_entropy)
+            test_acc.append(valid_acc)
 
-            if mse < best_test_loss:
+            if valid_cross_entropy < best_test_loss:
+                print "NEW BEST!"
                 best_params = [p.get_value() for p in parameters]
-                best_test_loss = cross_entropy
+                best_test_loss = valid_cross_entropy
 
             save_vals = {'parameters': [p.get_value() for p in parameters],
                          'rmsprop': [r.get_value() for r in rmsprop],
                          'train_loss': train_loss,
                          'test_loss': test_loss,
                          'best_params': best_params,
+                         'test_acc': test_acc,
                          'best_test_loss': best_test_loss}
 
             cPickle.dump(save_vals,
@@ -423,13 +463,15 @@ def main(n_iter, n_batch, n_hidden, time_steps, learning_rate, savefile, scale_p
 
     
 if __name__=="__main__":
-    kwargs = {'n_iter': 20000,
+    kwargs = {'n_iter': 1000000,
               'n_batch': 20,
-              'n_hidden': 512,
+              'n_hidden': 100,
               'time_steps': 28*28,
-              'learning_rate': np.float32(0.001),
-              'savefile': '/data/lisatmp3/arjovskm/complex_RNN/2015-10-30-adding-200-fft-5scalepen.pkl',
+              'learning_rate': np.float32(0.0005),
+              'savefile': '/data/lisatmp3/arjovskm/complex_RNN/2015-11-08-IRNN-permuted_mnist.pkl',
               'scale_penalty': 5,
-              'use_scale': True}
-
+              'use_scale': True,
+              'reload_progress': True,
+              'model': 'complex_RNN_LSTM',
+              'n_hidden_lstm': 100}
     main(**kwargs)
