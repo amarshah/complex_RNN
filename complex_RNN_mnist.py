@@ -66,7 +66,7 @@ def main(n_iter, n_batch, n_hidden, time_steps, learning_rate, savefile, scale_p
  
     gradient_clipping = np.float32(1)
     if (model == 'LSTM'):   
-        inputs, parameters, costs = LSTM(n_input, n_hidden, n_output)
+        inputs, parameters, costs = LSTM(n_input, n_hidden_LSTM, n_output)
     elif (model == 'complex_RNN'):
         gradient_clipping = np.float32(100000)
         inputs, parameters, costs = complex_RNN(n_input, n_hidden, n_output, scale_penalty)
@@ -79,19 +79,12 @@ def main(n_iter, n_batch, n_hidden, time_steps, learning_rate, savefile, scale_p
     else:
         print "Unsuported model:", model
         return
-
-   
-    
-    if not use_scale:
-        parameters.pop() 
    
     gradients = T.grad(costs[0], parameters)
 
 #   GRADIENT CLIPPING
     gradients = gradients[:7] + [T.clip(g, -gradient_clipping, gradient_clipping)
             for g in gradients[7:]]
-    
-#    gradients = clipped_gradients(gradients, gradient_clipping)
  
     s_train_x = theano.shared(train_x)
     s_train_y = theano.shared(train_y)
@@ -104,9 +97,6 @@ def main(n_iter, n_batch, n_hidden, time_steps, learning_rate, savefile, scale_p
 
     index = T.iscalar('i')
 
-
-    
-
     updates, rmsprop = rms_prop(learning_rate, parameters, gradients)
 
     givens = {inputs[0] : s_train_x[:, n_batch * index : n_batch * (index + 1), :],
@@ -114,7 +104,6 @@ def main(n_iter, n_batch, n_hidden, time_steps, learning_rate, savefile, scale_p
 
     givens_valid = {inputs[0] : s_valid_x,
                    inputs[1] : s_valid_y}
-    
    
     
     train = theano.function([index], [costs[0], costs[2]], givens=givens, updates=updates)
