@@ -387,7 +387,7 @@ def complex_RNN_LSTM(n_input, n_hidden, n_hidden_lstm, n_output, scale_penalty, 
     if out_every_t:
         sequences = [x, y]
     else:
-        sequences = [x, T.tile(theano.shared(np.zeros((1,1)), dtype=theano.config.floatX), [x.shape[0], 1, 1])]
+        sequences = [x, T.tile(theano.shared(np.zeros((1,1), dtype=theano.config.floatX)), [x.shape[0], 1, 1])]
     
     non_sequences = [theta, V_re, V_im, hidden_bias, scale, W_i, W_f, W_c, W_o, U_i, U_f, U_c, U_o, V_o, b_i_batch, b_f_batch, b_c_batch, b_o_batch]
     outputs_info=[h_0_batch, h_0_lstm_batch, lstm_state_0_batch, theano.shared(np.float32(0.0)), theano.shared(np.float32(0.0))]
@@ -547,7 +547,7 @@ def complex_RNN(n_input, n_hidden, n_output, scale_penalty, out_every_t=False, l
     [hidden_states, cost_steps, acc_steps], updates = theano.scan(fn=recurrence,
                                          sequences=sequences,
                                          non_sequences=non_sequences,
-                                         outputs_info=[h_0_batch, theano.shared(0.0), theano.shared(0.0)])
+                                         outputs_info=[h_0_batch, theano.shared(np.float32(0.0)), theano.shared(np.float32(0.0))])
 
     if not out_every_t:
         lin_output = T.dot(hidden_states[-1,:,:], U) + out_bias_batch
