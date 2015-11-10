@@ -105,8 +105,7 @@ def IRNN(n_input, n_hidden, n_output, out_every_t=False, loss_function='CE'):
     hidden_states, updates = theano.scan(fn = recurrence, sequences = x, non_sequences = non_sequences, outputs_info = h_0_batch)
 
     # ONE OUTPUT
-    out_bias_batch = T.tile(out_bias, [x.shape[1], 1])
-    linear_output = T.dot(hidden_states[-1, :, :], U) + out_bias_batch
+    linear_output = T.dot(hidden_states[-1, :, :], U) + out_bias.dimshuffle('x', 0)
     
     # CALCULATE LOSS
     output = T.nnet.softmax(linear_output)
@@ -147,8 +146,7 @@ def tanhRNN(n_input, n_hidden, n_output, out_every_t=False, loss_function='CE'):
     hidden_states, updates = theano.scan(fn = recurrence, sequences = x, non_sequences = non_sequences, outputs_info = h_0_batch)
 
     # ONE OUTPUT
-    out_bias_batch = T.tile(out_bias, [x.shape[1], 1])
-    linear_output = T.dot(hidden_states[-1, :, :], U) + out_bias_batch
+    linear_output = T.dot(hidden_states[-1, :, :], U) + out_bias.dimshuffle('x', 0)
     
     # CALCULATE LOSS
     output = T.nnet.softmax(linear_output)
@@ -174,14 +172,14 @@ def LSTM(n_input, n_hidden, n_output, out_every_t=False, loss_function='CE'):
     U_c = initialize_matrix(n_hidden, n_hidden, 'U_c', rng)
     U_o = initialize_matrix(n_hidden, n_hidden, 'U_o', rng)
     V_o = initialize_matrix(n_hidden, n_hidden, 'V_o', rng)
-    b_i = theano.shared(np.zeros((1, n_hidden), dtype=theano.config.floatX))
-    b_f = theano.shared(np.ones((1, n_hidden), dtype=theano.config.floatX))
-    b_c = theano.shared(np.zeros((1, n_hidden), dtype=theano.config.floatX))
-    b_o = theano.shared(np.zeros((1, n_hidden), dtype=theano.config.floatX))
+    b_i = theano.shared(np.zeros((n_hidden,), dtype=theano.config.floatX))
+    b_f = theano.shared(np.ones((n_hidden,), dtype=theano.config.floatX))
+    b_c = theano.shared(np.zeros((n_hidden,), dtype=theano.config.floatX))
+    b_o = theano.shared(np.zeros((n_hidden,), dtype=theano.config.floatX))
     h_0 = theano.shared(np.zeros((1, n_hidden), dtype=theano.config.floatX))
     state_0 = theano.shared(np.zeros((1, n_hidden), dtype=theano.config.floatX))
     out_mat = initialize_matrix(n_hidden, n_output, 'out_mat', rng)
-    out_bias = theano.shared(np.zeros((1, n_output), dtype=theano.config.floatX))
+    out_bias = theano.shared(np.zeros((n_output,), dtype=theano.config.floatX))
     parameters = [W_i, W_f, W_c, W_o, U_i, U_f, U_c, U_o, V_o, b_i, b_f, b_c, b_o, h_0, state_0, out_mat, out_bias]
 
     x = T.tensor3()
@@ -213,8 +211,7 @@ def LSTM(n_input, n_hidden, n_output, out_every_t=False, loss_function='CE'):
     [hidden_states, states], updates = theano.scan(fn = recurrence, sequences = x, non_sequences = non_sequences, outputs_info = [h_0_batch, state_0_batch])
 
     # ONE OUTPUT
-    out_bias_batch = T.tile(out_bias, [x.shape[1], 1])
-    linear_output = T.dot(hidden_states[-1, :, :], out_mat) + out_bias_batch
+    linear_output = T.dot(hidden_states[-1, :, :], out_mat) + out_bias.dimshuffle('x', 0)
     
     # CALCULATE LOSS
     output = T.nnet.softmax(linear_output)
@@ -264,14 +261,14 @@ def complex_RNN_LSTM(n_input, n_hidden, n_hidden_lstm, n_output, scale_penalty, 
     U_c = initialize_matrix(n_hidden_lstm, n_hidden_lstm, 'U_c', rng)
     U_o = initialize_matrix(n_hidden_lstm, n_hidden_lstm, 'U_o', rng)
     V_o = initialize_matrix(n_hidden_lstm, n_hidden_lstm, 'V_o', rng)
-    b_i = theano.shared(np.zeros((1, n_hidden_lstm), dtype=theano.config.floatX))
-    b_f = theano.shared(np.ones((1, n_hidden_lstm), dtype=theano.config.floatX))
-    b_c = theano.shared(np.zeros((1, n_hidden_lstm), dtype=theano.config.floatX))
-    b_o = theano.shared(np.zeros((1, n_hidden_lstm), dtype=theano.config.floatX))
+    b_i = theano.shared(np.zeros((n_hidden_lstm,), dtype=theano.config.floatX))
+    b_f = theano.shared(np.ones((n_hidden_lstm,), dtype=theano.config.floatX))
+    b_c = theano.shared(np.zeros((n_hidden_lstm,), dtype=theano.config.floatX))
+    b_o = theano.shared(np.zeros((n_hidden_lstm,), dtype=theano.config.floatX))
     h_0_lstm = theano.shared(np.zeros((1, n_hidden_lstm), dtype=theano.config.floatX))
     lstm_state_0 = theano.shared(np.zeros((1, n_hidden_lstm), dtype=theano.config.floatX))
     out_mat = initialize_matrix(n_hidden_lstm, n_output, 'out_mat', rng)
-    out_bias = theano.shared(np.zeros((1, n_output), dtype=theano.config.floatX))
+    out_bias = theano.shared(np.zeros((n_output,), dtype=theano.config.floatX))
     parameters = parameters + [W_i, W_f, W_c, W_o, U_i, U_f, U_c, U_o, V_o, b_i, b_f, b_c, b_o, h_0_lstm, lstm_state_0, out_mat, out_bias]
 
     bin = np.sqrt(6. / (2 * n_hidden + n_hidden_lstm))
@@ -289,7 +286,6 @@ def complex_RNN_LSTM(n_input, n_hidden, n_hidden_lstm, n_output, scale_penalty, 
     b_f_batch = T.tile(b_f, [x.shape[1], 1])
     b_c_batch = T.tile(b_c, [x.shape[1], 1])
     b_o_batch = T.tile(b_o, [x.shape[1], 1])
-    out_bias_batch = T.tile(out_bias, [x.shape[1], 1])
 
     # define the recurrence used by theano.scan
     def recurrence(x_t, y_t, h_prev, lstm_h_prev, lstm_state_prev, cost_prev, acc_prev, theta, V_re, V_im, hidden_bias, scale, W_i, W_f, W_c, W_o, U_i, U_f, U_c, U_o, V_o, b_i_batch, b_f_batch, b_c_batch, b_o_batch):  
@@ -365,7 +361,7 @@ def complex_RNN_LSTM(n_input, n_hidden, n_hidden_lstm, n_output, scale_penalty, 
 
 
         if out_every_t:
-            lin_output = T.dot(lstm_h_t, out_mat) + out_bias_batch
+            lin_output = T.dot(lstm_h_t, out_mat) + out_bias.dimshuffle('x', 0)
             if loss_function == 'CE':
                 RNN_output = T.nnet.softmax(lin_output)
                 cost_t = T.nnet.categorical_crossentropy(RNN_output, y_t).mean()
@@ -398,7 +394,7 @@ def complex_RNN_LSTM(n_input, n_hidden, n_hidden_lstm, n_output, scale_penalty, 
 
     
     if not out_every_t:
-        lin_output = T.dot(hidden_lstm_states[-1,:,:], out_mat) + out_bias_batch
+        lin_output = T.dot(hidden_lstm_states[-1,:,:], out_mat) + out_bias.dimshuffle('x', 0)
 
         # define the cost
         if loss_function == 'CE':
@@ -462,7 +458,6 @@ def complex_RNN(n_input, n_hidden, n_output, scale_penalty, out_every_t=False, l
     else:
         y = T.matrix()
     index_permute = np.random.permutation(n_hidden)
-    out_bias_batch = T.tile(out_bias, [x.shape[1], 1])
     
     # define the recurrence used by theano.scan
     def recurrence(x_t, y_t, h_prev, cost_prev, acc_prev, theta, V_re, V_im, hidden_bias, scale):  
@@ -523,7 +518,7 @@ def complex_RNN(n_input, n_hidden, n_output, scale_penalty, out_every_t=False, l
         h_t = T.concatenate([nonlin_output_re, 
                              nonlin_output_im], axis=1) 
         if out_every_t:
-            lin_output = T.dot(h_t, U) + out_bias_batch
+            lin_output = T.dot(h_t, U) + out_bias.dimshuffle('x', 0)
             if loss_function == 'CE':
                 RNN_output = T.nnet.softmax(lin_output)
                 cost_t = T.nnet.categorical_crossentropy(RNN_output, y_t).mean()
@@ -550,7 +545,7 @@ def complex_RNN(n_input, n_hidden, n_output, scale_penalty, out_every_t=False, l
                                          outputs_info=[h_0_batch, theano.shared(np.float32(0.0)), theano.shared(np.float32(0.0))])
 
     if not out_every_t:
-        lin_output = T.dot(hidden_states[-1,:,:], U) + out_bias_batch
+        lin_output = T.dot(hidden_states[-1,:,:], U) + out_bias.dimshuffle('x', 0)
 
         # define the cost
         if loss_function == 'CE':
