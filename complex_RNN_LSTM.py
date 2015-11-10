@@ -15,7 +15,7 @@ def initialize_matrix(n_in, n_out, name, rng):
 # computes Theano graph
 # returns symbolic parameters, costs, inputs 
 # there are n_hidden real units and a further n_hidden imaginary units 
-def complex_RNN_LSTM(n_input, n_hidden, n_hidden_lstm, n_output, scale_penalty):
+def complex_RNN_LSTM(n_input, n_hidden, n_hidden_lstm, n_output, scale_penalty, out_every_t=False, loss_function='CE'):
     
     np.random.seed(1234)
     rng = np.random.RandomState(1234)
@@ -67,16 +67,20 @@ def complex_RNN_LSTM(n_input, n_hidden, n_hidden_lstm, n_output, scale_penalty):
 
 
     x = T.tensor3()
-    y = T.matrix()#T.tensor3()
+    if out_every_t:
+        y = T.tensor3()
+    else:
+        y = T.matrix()
     index_permute = np.random.permutation(n_hidden)
  
     b_i_batch = T.tile(b_i, [x.shape[1], 1])
     b_f_batch = T.tile(b_f, [x.shape[1], 1])
     b_c_batch = T.tile(b_c, [x.shape[1], 1])
     b_o_batch = T.tile(b_o, [x.shape[1], 1])
+    out_bias_batch = T.tile(out_bias, [x.shape[1], 1])
 
     # define the recurrence used by theano.scan
-    def recurrence(x_t, h_prev, lstm_h_prev, lstm_state_prev, theta, V_re, V_im, hidden_bias, scale, W_i, W_f, W_c, W_o, U_i, U_f, U_c, U_o, V_o, b_i_batch, b_f_batch, b_c_batch, b_o_batch):  
+    def recurrence(x_t, y_t, h_prev, lstm_h_prev, lstm_state_prev, cost_prev, acc_prev, theta, V_re, V_im, hidden_bias, scale, W_i, W_f, W_c, W_o, U_i, U_f, U_c, U_o, V_o, b_i_batch, b_f_batch, b_c_batch, b_o_batch):  
         def do_fft(input, n_hidden):
             fft_input = T.reshape(input, (input.shape[0], 2, n_hidden))
             fft_input = fft_input.dimshuffle(0,2,1)
@@ -190,7 +194,7 @@ def complex_RNN_LSTM(n_input, n_hidden, n_hidden_lstm, n_output, scale_penalty):
 
         # scale RELU nonlinearity
         modulus = T.sqrt(lin_output_re ** 2 + lin_output_im ** 2)
-        rescale = T.maximum(modulus + hidden_bias.dimshuffle('x',0), 0.) / (modulus + 1e-5)
+        rescale = T.maximum(modulus + hidden_bias.dimshuffle('x',0), 0.) / (modulus + 1e-7)
         nonlin_output_re = lin_output_re * rescale
         nonlin_output_im = lin_output_im * rescale
 
@@ -214,45 +218,67 @@ def complex_RNN_LSTM(n_input, n_hidden, n_hidden_lstm, n_output, scale_penalty):
         lstm_h_t = output_t * T.tanh(lstm_state_t)
 
 
-
-        return h_t, lstm_h_t, lstm_state_t
+        if out_every_t:
+            lin_output = T.dot(lstm_h_t, out_mat) + out_bias_batch
+            if loss_function == 'CE':
+                RNN_output = T.nnet.softmax(lin_output)
+                cost_t = T.nnet.categorical_crossentropy(RNN_output, y_t).mean()
+                acc_t =(T.eq(T.argmax(RNN_output, axis=-1), T.argmax(y_t, axis=-1))).mean(dtype=theano.config.floatX)
+            elif loss_function == 'MSE':
+                cost_t = ((lin_output - y_t)**2).mean()
+                acc_t = 0
+        else:
+            cost_t = 0
+            acc_t = 0
+        
+        
+        return h_t, lstm_h_t, lstm_state_t, cost_t, acc_t
 
     # compute hidden states
     h_0_batch = T.tile(h_0, [x.shape[1], 1])
     h_0_lstm_batch = T.tile(h_0_lstm, [x.shape[1], 1])
     lstm_state_0_batch = T.tile(lstm_state_0, [x.shape[1], 1])
-    non_sequences = [theta, V_re, V_im, hidden_bias, scale, W_i, W_f, W_c, W_o, U_i, U_f, U_c, U_o, V_o, b_i_batch, b_f_batch, b_c_batch, b_o_batch]
-    [hidden_states, hidden_lstm_states, lstm_states], updates = theano.scan(fn=recurrence,
-                                                                sequences=x,
-                                                                non_sequences=non_sequences,
-                                                                outputs_info=[h_0_batch, h_0_lstm_batch, lstm_state_0_batch])
-
-    # define hidden to output graph
-    out_bias_batch = T.tile(out_bias, [x.shape[1], 1])
-    lin_output = T.dot(hidden_lstm_states[-1,:,:], out_mat) + out_bias_batch
     
-#    # define the cost
-#    cost = ((RNN_output - y)**2).mean()
-#    cost.name = 'mse'
-#    cost_penalty = cost + scale_penalty * ((scale-1)**2).sum()
-#    cost_penalty.name = 'mse_penalty'
-#    costs = [cost_penalty, cost]
+    if out_every_t:
+        sequences = [x, y]
+    else:
+        sequences = [x, T.tensor3()]
+    
+    non_sequences = [theta, V_re, V_im, hidden_bias, scale, W_i, W_f, W_c, W_o, U_i, U_f, U_c, U_o, V_o, b_i_batch, b_f_batch, b_c_batch, b_o_batch]
+    outputs_info=[h_0_batch, h_0_lstm_batch, lstm_state_0_batch, theano.shared(np.float32(0.0)), theano.shared(np.float32(0.0))]
+    [hidden_states, hidden_lstm_states, lstm_states, cost_steps, acc_steps], updates = theano.scan(fn=recurrence,
+                                                                                        sequences=sequences,
+                                                                                        non_sequences=non_sequences,
+                                                                                        outputs_info=outputs_info)
+
+    
+    if not out_every_t:
+        lin_output = T.dot(hidden_lstm_states[-1,:,:], out_mat) + out_bias_batch
+
+        # define the cost
+        if loss_function == 'CE':
+            RNN_output = T.nnet.softmax(lin_output)
+            cost = T.nnet.categorical_crossentropy(RNN_output, y).mean()
+            cost.name = 'cross_entropy'
+            cost_penalty = cost + scale_penalty * ((scale - 1) ** 2).sum()
+            cost_penalty.name = 'penalized cost'
+
+            # compute accuracy
+            accuracy = T.mean(T.eq(T.argmax(RNN_output, axis=-1), T.argmax(y, axis=-1)))
+
+            costs = [cost_penalty, cost, accuracy]
+        elif loss_function == 'MSE':
+            cost = ((lin_output - y)**2).mean()
+            cost_penalty = cost + scale_penalty * ((scale - 1) ** 2).sum()
+
+            costs = [cost_penalty, cost]
 
 
-    # define the cost
-    RNN_output = T.nnet.softmax(lin_output)
-    cost = T.nnet.categorical_crossentropy(RNN_output, y).mean()
-    cost.name = 'cross_entropy'
-    cost_penalty = cost + scale_penalty * ((scale - 1) ** 2).sum()
-    cost_penalty.name = 'penalized cost'
-
-    # compute accuracy
-    accuracy = T.mean(T.eq(T.argmax(RNN_output, axis=-1), T.argmax(y, axis=-1)))
-
-    #    accuracy = y[:, T.argmax(RNN_output, axis=1)].mean()
-
-    costs = [cost_penalty, cost, accuracy]
-
+    else:
+        cost = cost_steps.mean()
+        accuracy = acc_steps.mean()
+        cost_penalty = cost + scale_penalty * ((scale - 1) ** 2).sum()
+        costs = [cost_penalty, cost, accuracy]
 
 
     return [x, y], parameters, costs

@@ -6,8 +6,10 @@ from fftconv import cufft, cuifft
 import numpy as np
 import theano.tensor as T
 from theano.ifelse import ifelse
-
-
+from complex_RNN_LSTM import *
+import os
+import math
+from math import log
 
 def initialize_matrix(n_in, n_out, name, rng):
     bin = np.sqrt(6. / (n_in + n_out))
@@ -233,7 +235,7 @@ def gradient_descent_momentum(learning_rate, momentum, parameters, gradients):
 
 
 def rms_prop(learning_rate, parameters, gradients):        
-    rmsprop = [theano.shared(1e-3*np.ones_like(p.get_value())) for p in parameters]
+    rmsprop = [theano.shared(1e-4*np.ones_like(p.get_value())) for p in parameters]
     new_rmsprop = [0.9 * vel + 0.1 * (g**2) for vel, g in zip(rmsprop, gradients)]
 
     updates1 = zip(rmsprop, new_rmsprop)
@@ -271,9 +273,12 @@ def onehot(x,numclasses=None):
 
 def get_data(seq_length=200, framelen=1):
     alphabetsize = 50
-    data = penntreebank()
-    trainset = data['train_chars']
-    validset = data['valid_chars']
+    
+    datadir = os.environ['FUEL_DATA_PATH']
+    data = np.load(os.path.join(datadir, 'PennTreebankCorpus/char_level_penntree.npz'))
+    trainset = data['train']
+    validset = data['valid']
+
     # end of sentence: \n
     allletters = " etanoisrhludcmfpkgybw<>\nvN.'xj$-qz&0193#285\\764/*"
     dictionary = dict(zip(list(set(allletters)), range(alphabetsize)))
@@ -282,19 +287,21 @@ def get_data(seq_length=200, framelen=1):
     #all2grams = ''.join([a+b for b in allletters for a in allletters])
     #trainset = np.hstack((np.array([dictionary[c] for c in all2grams]), trainset))
 
-    numtrain, numvalid = len(trainset) / seq_length * seq_length,\
-        len(validset) / seq_length * seq_length
-    train_features_numpy = onehot(trainset[:numtrain]).reshape(seq_length, numtrain/seq_length, alphabetsize)
-    valid_features_numpy = onehot(validset[:numvalid]).reshape(seq_length, numvalid/seq_length, alphabetsize)
+    numtrain = len(trainset) - (len(trainset) % seq_length)
+    numvalid = len(validset) - (len(validset) % seq_length)
+    
+    numvis = framelen * alphabetsize
+    train_features_numpy = onehot(trainset[:numtrain]).reshape(-1, alphabetsize * seq_length * framelen)
+    valid_features_numpy = onehot(validset[:numvalid]).reshape(-1, alphabetsize * seq_length * framelen)
+    
     del trainset, validset
+    
+    np.random.shuffle(train_features_numpy)
+    np.random.shuffle(valid_features_numpy)
 
-    ntrain = numtrain/seq_length
-    inds = np.random.permutation(ntrain)
-    train_features = train_features_numpy[:,inds,:]
+    train_features = np.swapaxes(np.asarray([ex.reshape(seq_length * framelen, alphabetsize) for ex in train_features_numpy]), 0, 1)
+    valid_features = np.swapaxes(np.asarray([ex.reshape(seq_length * framelen, alphabetsize) for ex in valid_features_numpy]), 0, 1)
 
-    nvalid = numvalid/seq_length
-    inds = np.random.permutation(nvalid)
-    valid_features = valid_features_numpy[:,inds,:]
     
     return [train_features, valid_features]
 
@@ -305,7 +312,7 @@ def get_data(seq_length=200, framelen=1):
 
 # Warning: assumes n_batch is a divisor of number of data points
 # Suggestion: preprocess outputs to have norm 1 at each time step
-def main(n_iter, n_batch, n_hidden, time_steps, learning_rate, savefile, scale_penalty, use_scale):
+def main(n_iter, n_batch, n_hidden, n_hidden_LSTM, time_steps, learning_rate, savefile, scale_penalty, use_scale):
 
  
     # --- Set optimization params --------
@@ -318,7 +325,7 @@ def main(n_iter, n_batch, n_hidden, time_steps, learning_rate, savefile, scale_p
     [train_x, valid_x] = get_data(seq_length=time_steps)
     
     num_batches = train_x.shape[1] / n_batch - 1
-
+    
     train_y = train_x[1:,:,:]
     train_x = train_x[:-1,:,:]
 
@@ -329,12 +336,17 @@ def main(n_iter, n_batch, n_hidden, time_steps, learning_rate, savefile, scale_p
 
     # --- Compile theano graph and gradients
  
-    inputs, parameters, costs = complex_RNN(n_input, n_hidden, n_output, scale_penalty)
+    inputs, parameters, costs = complex_RNN_LSTM(n_input, n_hidden, n_hidden_LSTM, n_output, scale_penalty, out_every_t=True)
     if not use_scale:
         parameters.pop() 
    
 #    import pdb; pdb.set_trace()
+    gradient_clipping = np.float32('1.0')
     gradients = T.grad(costs[0], parameters)
+    gradients = gradients[:7] + [T.clip(g, -gradient_clipping, gradient_clipping)
+                                for g in gradients[7:]]
+ 
+
 
     s_train_x = theano.shared(train_x, borrow=True)
     s_train_y = theano.shared(train_y, borrow=True)
@@ -357,8 +369,8 @@ def main(n_iter, n_batch, n_hidden, time_steps, learning_rate, savefile, scale_p
                     inputs[1] : s_valid_y}
     
        
-    train = theano.function([index], costs[0], givens=givens, updates=updates)
-    valid = theano.function([], costs[0], givens=givens_valid)
+    train = theano.function([index], [costs[1], costs[2]], givens=givens, updates=updates)
+    valid = theano.function([], [costs[1], costs[2]], givens=givens_valid)
 
     # --- Training Loop ---------------------------------------------------------------
     train_loss = []
@@ -368,23 +380,28 @@ def main(n_iter, n_batch, n_hidden, time_steps, learning_rate, savefile, scale_p
     for i in xrange(n_iter):
      #   pdb.set_trace()
 
-        cent = train(i % num_batches)
+        [cent, acc] = train(i % num_batches)
         train_loss.append(cent)
         print "Iteration:", i
-        print "cross entropy:", cent
+        print "Bits per character:", log(math.e, 2.0) * cent
+        print "Test Perplexity:", 2.0**(5.6 * log(math.e, 2.0) * cent)
+        print "accuracy:", 100 * acc
         print
 
-        if (i % 25==0):
-            cent = valid()
+        if (i % 50==0):
+            [cent, acc] = valid()
             print
             print "VALIDATION"
-            print "cross entropy:", cent
-            print 
+            print "Bits per character:", log(math.e, 2.0) * cent
+            print "Test Perplexity:", 2.0**(5.6 * log(math.e, 2.0) * cent)
+            print "accuracy:", 100 * acc
+            print
             valid_loss.append(cent)
 
             if cent < best_valid_loss:
                 best_params = [p.get_value() for p in parameters]
                 best_valid_loss = cent
+                print "BEST VALUE!"
 
             save_vals = {'parameters': [p.get_value() for p in parameters],
                          'rmsprop': [r.get_value() for r in rmsprop],
@@ -401,12 +418,13 @@ def main(n_iter, n_batch, n_hidden, time_steps, learning_rate, savefile, scale_p
     
 if __name__=="__main__":
     kwargs = {'n_iter': 50000,
-              'n_batch': 100,
+              'n_batch': 20,
               'n_hidden': 1024,
-              'time_steps': 100,
-              'learning_rate': np.float32(0.001),
-              'savefile': '/data/lisatmp3/shahamar/2015-11-02-penntree-nofft-1scalepen-deepout.pkl',
-              'scale_penalty': 1,
+              'n_hidden_LSTM': 512,
+              'time_steps': 500,
+              'learning_rate': np.float32(0.0005),
+              'savefile': '/data/lisatmp3/arjovskm/complex_RNN/penn_tree_500.pkl',
+              'scale_penalty': 100,
               'use_scale': True}
 
     main(**kwargs)
