@@ -185,25 +185,20 @@ def LSTM(n_input, n_hidden, n_output, out_every_t=False, loss_function='CE'):
     x = T.tensor3()
     y = T.matrix()
     
-    b_i_batch = T.tile(b_i, [x.shape[1], 1])
-    b_f_batch = T.tile(b_f, [x.shape[1], 1])
-    b_c_batch = T.tile(b_c, [x.shape[1], 1])
-    b_o_batch = T.tile(b_o, [x.shape[1], 1])
-
-    def recurrence(x_t, h_prev, state_prev, W_i, W_f, W_c, W_o, U_i, U_f, U_c, U_o, V_o, b_i_batch, b_f_batch, b_c_batch, b_o_batch):
-        input_t = T.nnet.sigmoid(T.dot(x_t, W_i) + T.dot(h_prev, U_i) + b_i_batch)
-        candidate_t = T.tanh(T.dot(x_t, W_c) + T.dot(h_prev, U_c) + b_c_batch)
-        forget_t = T.nnet.sigmoid(T.dot(x_t, W_f) + T.dot(h_prev, U_f) + b_f_batch)
+    def recurrence(x_t, h_prev, state_prev, W_i, W_f, W_c, W_o, U_i, U_f, U_c, U_o, V_o, b_i, b_f, b_c, b_o):
+        input_t = T.nnet.sigmoid(T.dot(x_t, W_i) + T.dot(h_prev, U_i) + b_i.dimshuffle('x', 0))
+        candidate_t = T.tanh(T.dot(x_t, W_c) + T.dot(h_prev, U_c) + b_c.dimshuffle('x', 0))
+        forget_t = T.nnet.sigmoid(T.dot(x_t, W_f) + T.dot(h_prev, U_f) + b_f.dimshuffle('x', 0))
 
         state_t = input_t * candidate_t + forget_t * state_prev
 
-        output_t = T.nnet.sigmoid(T.dot(x_t, W_o) + T.dot(h_prev, U_o) + T.dot(state_t, V_o) + b_o_batch)
+        output_t = T.nnet.sigmoid(T.dot(x_t, W_o) + T.dot(h_prev, U_o) + T.dot(state_t, V_o) + b_o.dimshuffle('x', 0))
 
         h_t = output_t * T.tanh(state_t)
 
         return h_t, state_t
 
-    non_sequences = [W_i, W_f, W_c, W_o, U_i, U_f, U_c, U_o, V_o, b_i_batch, b_f_batch, b_c_batch, b_o_batch]
+    non_sequences = [W_i, W_f, W_c, W_o, U_i, U_f, U_c, U_o, V_o, b_i, b_f, b_c, b_o]
 
     h_0_batch = T.tile(h_0, [x.shape[1], 1])
     state_0_batch = T.tile(state_0, [x.shape[1], 1])
@@ -282,13 +277,8 @@ def complex_RNN_LSTM(n_input, n_hidden, n_hidden_lstm, n_output, scale_penalty, 
         y = T.matrix()
     index_permute = np.random.permutation(n_hidden)
  
-    b_i_batch = T.tile(b_i, [x.shape[1], 1])
-    b_f_batch = T.tile(b_f, [x.shape[1], 1])
-    b_c_batch = T.tile(b_c, [x.shape[1], 1])
-    b_o_batch = T.tile(b_o, [x.shape[1], 1])
-
     # define the recurrence used by theano.scan
-    def recurrence(x_t, y_t, h_prev, lstm_h_prev, lstm_state_prev, cost_prev, acc_prev, theta, V_re, V_im, hidden_bias, scale, W_i, W_f, W_c, W_o, U_i, U_f, U_c, U_o, V_o, b_i_batch, b_f_batch, b_c_batch, b_o_batch):  
+    def recurrence(x_t, y_t, h_prev, lstm_h_prev, lstm_state_prev, cost_prev, acc_prev, theta, V_re, V_im, hidden_bias, scale, W_i, W_f, W_c, W_o, U_i, U_f, U_c, U_o, V_o, b_i, b_f, b_c, b_o):  
         
         
         # Compute hidden linear transform
@@ -349,13 +339,13 @@ def complex_RNN_LSTM(n_input, n_hidden, n_hidden_lstm, n_output, scale_penalty, 
         
         lstm_input_t = T.dot(h_t, random_projection_hidden_to_lstm)
 
-        input_t = T.nnet.sigmoid(T.dot(lstm_input_t , W_i) + T.dot(lstm_h_prev, U_i) + b_i_batch)
-        candidate_t = T.tanh(T.dot(lstm_input_t , W_c) + T.dot(lstm_h_prev, U_c) + b_c_batch)
-        forget_t = T.nnet.sigmoid(T.dot(lstm_input_t , W_f) + T.dot(lstm_h_prev, U_f) + b_f_batch)
+        input_t = T.nnet.sigmoid(T.dot(lstm_input_t , W_i) + T.dot(lstm_h_prev, U_i) + b_i.dimshuffle('x', 0))
+        candidate_t = T.tanh(T.dot(lstm_input_t , W_c) + T.dot(lstm_h_prev, U_c) + b_c.dimshuffle('x', 0))
+        forget_t = T.nnet.sigmoid(T.dot(lstm_input_t , W_f) + T.dot(lstm_h_prev, U_f) + b_f.dimshuffle('x', 0))
 
         lstm_state_t = input_t * candidate_t + forget_t * lstm_state_prev
 
-        output_t = T.nnet.sigmoid(T.dot(lstm_input_t , W_o) + T.dot(lstm_h_prev, U_o) + T.dot(lstm_state_t, V_o) + b_o_batch)
+        output_t = T.nnet.sigmoid(T.dot(lstm_input_t , W_o) + T.dot(lstm_h_prev, U_o) + T.dot(lstm_state_t, V_o) + b_o.dimshuffle('x', 0))
 
         lstm_h_t = output_t * T.tanh(lstm_state_t)
 
@@ -385,7 +375,7 @@ def complex_RNN_LSTM(n_input, n_hidden, n_hidden_lstm, n_output, scale_penalty, 
     else:
         sequences = [x, T.tile(theano.shared(np.zeros((1,1), dtype=theano.config.floatX)), [x.shape[0], 1, 1])]
     
-    non_sequences = [theta, V_re, V_im, hidden_bias, scale, W_i, W_f, W_c, W_o, U_i, U_f, U_c, U_o, V_o, b_i_batch, b_f_batch, b_c_batch, b_o_batch]
+    non_sequences = [theta, V_re, V_im, hidden_bias, scale, W_i, W_f, W_c, W_o, U_i, U_f, U_c, U_o, V_o, b_i, b_f, b_c, b_o]
     outputs_info=[h_0_batch, h_0_lstm_batch, lstm_state_0_batch, theano.shared(np.float32(0.0)), theano.shared(np.float32(0.0))]
     [hidden_states, hidden_lstm_states, lstm_states, cost_steps, acc_steps], updates = theano.scan(fn=recurrence,
                                                                                         sequences=sequences,
