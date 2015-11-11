@@ -109,7 +109,7 @@ def IRNN(n_input, n_hidden, n_output, out_every_t=False, loss_function='CE'):
             cost_t = theano.shared(np.float32(0.0))
             acc_t = theano.shared(np.float32(0.0))
  
-       return 
+        return h_t, cost_t, acc_t
     
     non_sequences = [V, W, hidden_bias_batch, out_mat, out_bias]
 
@@ -186,7 +186,7 @@ def tanhRNN(n_input, n_hidden, n_output, out_every_t=False, loss_function='CE'):
             cost_t = theano.shared(np.float32(0.0))
             acc_t = theano.shared(np.float32(0.0))
  
-       return 
+        return h_t, cost_t, acc_t 
     
     non_sequences = [V, W, hidden_bias_batch, out_mat, out_bias]
 
