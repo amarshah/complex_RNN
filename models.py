@@ -81,7 +81,10 @@ def IRNN(n_input, n_hidden, n_output, out_every_t=False, loss_function='CE'):
     rng = np.random.RandomState(1234)
 
     x = T.tensor3()
-    y = T.matrix()
+    if out_every_t:
+        y = T.tensor3()
+    else:
+        y = T.matrix()
     inputs = [x, y]
 
     h_0 = theano.shared(np.zeros((1, n_hidden)))
@@ -94,7 +97,7 @@ def IRNN(n_input, n_hidden, n_output, out_every_t=False, loss_function='CE'):
 
     hidden_bias_batch = T.tile(hidden_bias, [x.shape[1], 1])
 
-    def recurrence(x_t, h_prev, V, W, hidden_bias_batch, out_mat, out_bias):
+    def recurrence(x_t, y_t, h_prev, V, W, hidden_bias_batch, out_mat, out_bias):
         h_t = T.nnet.relu(T.dot(h_prev, W) + T.dot(x_t, V) + hidden_bias_batch)
         if out_every_t:
             lin_output = T.dot(h_t, out_mat) + out_bias.dimshuffle('x', 0)
@@ -129,7 +132,7 @@ def IRNN(n_input, n_hidden, n_output, out_every_t=False, loss_function='CE'):
         if loss_function == 'CE':
             RNN_output = T.nnet.softmax(lin_output)
             cost = T.nnet.categorical_crossentropy(RNN_output, y).mean()
-            cost_penalty = cost + scale_penalty * ((scale - 1) ** 2).sum()
+            cost_penalty = cost
 
             # compute accuracy
             accuracy = T.mean(T.eq(T.argmax(RNN_output, axis=-1), T.argmax(y, axis=-1)))
@@ -137,7 +140,7 @@ def IRNN(n_input, n_hidden, n_output, out_every_t=False, loss_function='CE'):
             costs = [cost_penalty, cost, accuracy]
         elif loss_function == 'MSE':
             cost = ((lin_output - y)**2).mean()
-            cost_penalty = cost + scale_penalty * ((scale - 1) ** 2).sum()
+            cost_penalty = cost
 
             costs = [cost_penalty, cost]
 
@@ -145,7 +148,7 @@ def IRNN(n_input, n_hidden, n_output, out_every_t=False, loss_function='CE'):
     else:
         cost = cost_steps.mean()
         accuracy = acc_steps.mean()
-        cost_penalty = cost + scale_penalty * ((scale - 1) ** 2).sum()
+        cost_penalty = cost
         costs = [cost_penalty, cost, accuracy]
 
 
@@ -158,7 +161,10 @@ def tanhRNN(n_input, n_hidden, n_output, out_every_t=False, loss_function='CE'):
     rng = np.random.RandomState(1234)
 
     x = T.tensor3()
-    y = T.matrix()
+    if out_every_t:
+        y = T.tensor3()
+    else:
+        y = T.matrix()
     inputs = [x, y]
 
     h_0 = theano.shared(np.zeros((1, n_hidden)))
@@ -171,7 +177,7 @@ def tanhRNN(n_input, n_hidden, n_output, out_every_t=False, loss_function='CE'):
 
     hidden_bias_batch = T.tile(hidden_bias, [x.shape[1], 1])
 
-    def recurrence(x_t, h_prev, V, W, hidden_bias_batch, out_mat, out_bias):
+    def recurrence(x_t, y_t, h_prev, V, W, hidden_bias_batch, out_mat, out_bias):
         h_t = T.tanh(T.dot(h_prev, W) + T.dot(x_t, V) + hidden_bias_batch)
         if out_every_t:
             lin_output = T.dot(h_t, out_mat) + out_bias.dimshuffle('x', 0)
@@ -206,7 +212,7 @@ def tanhRNN(n_input, n_hidden, n_output, out_every_t=False, loss_function='CE'):
         if loss_function == 'CE':
             RNN_output = T.nnet.softmax(lin_output)
             cost = T.nnet.categorical_crossentropy(RNN_output, y).mean()
-            cost_penalty = cost + scale_penalty * ((scale - 1) ** 2).sum()
+            cost_penalty = cost
 
             # compute accuracy
             accuracy = T.mean(T.eq(T.argmax(RNN_output, axis=-1), T.argmax(y, axis=-1)))
@@ -214,7 +220,7 @@ def tanhRNN(n_input, n_hidden, n_output, out_every_t=False, loss_function='CE'):
             costs = [cost_penalty, cost, accuracy]
         elif loss_function == 'MSE':
             cost = ((lin_output - y)**2).mean()
-            cost_penalty = cost + scale_penalty * ((scale - 1) ** 2).sum()
+            cost_penalty = cost
 
             costs = [cost_penalty, cost]
 
@@ -222,7 +228,7 @@ def tanhRNN(n_input, n_hidden, n_output, out_every_t=False, loss_function='CE'):
     else:
         cost = cost_steps.mean()
         accuracy = acc_steps.mean()
-        cost_penalty = cost + scale_penalty * ((scale - 1) ** 2).sum()
+        cost_penalty = cost 
         costs = [cost_penalty, cost, accuracy]
 
 
@@ -259,7 +265,7 @@ def LSTM(n_input, n_hidden, n_output, out_every_t=False, loss_function='CE'):
     else:
         y = T.matrix()
     
-    def recurrence(x_t, h_prev, state_prev, cost_prev, acc_prev, W_i, W_f, W_c, W_o, U_i, U_f, U_c, U_o, V_o, b_i, b_f, b_c, b_o, out_mat, out_bias):
+    def recurrence(x_t, y_t, h_prev, state_prev, cost_prev, acc_prev, W_i, W_f, W_c, W_o, U_i, U_f, U_c, U_o, V_o, b_i, b_f, b_c, b_o, out_mat, out_bias):
         input_t = T.nnet.sigmoid(T.dot(x_t, W_i) + T.dot(h_prev, U_i) + b_i.dimshuffle('x', 0))
         candidate_t = T.tanh(T.dot(x_t, W_c) + T.dot(h_prev, U_c) + b_c.dimshuffle('x', 0))
         forget_t = T.nnet.sigmoid(T.dot(x_t, W_f) + T.dot(h_prev, U_f) + b_f.dimshuffle('x', 0))
@@ -304,7 +310,7 @@ def LSTM(n_input, n_hidden, n_output, out_every_t=False, loss_function='CE'):
         if loss_function == 'CE':
             RNN_output = T.nnet.softmax(lin_output)
             cost = T.nnet.categorical_crossentropy(RNN_output, y).mean()
-            cost_penalty = cost + scale_penalty * ((scale - 1) ** 2).sum()
+            cost_penalty = cost
 
             # compute accuracy
             accuracy = T.mean(T.eq(T.argmax(RNN_output, axis=-1), T.argmax(y, axis=-1)))
@@ -312,7 +318,7 @@ def LSTM(n_input, n_hidden, n_output, out_every_t=False, loss_function='CE'):
             costs = [cost_penalty, cost, accuracy]
         elif loss_function == 'MSE':
             cost = ((lin_output - y)**2).mean()
-            cost_penalty = cost + scale_penalty * ((scale - 1) ** 2).sum()
+            cost_penalty = cost 
 
             costs = [cost_penalty, cost]
 
@@ -320,7 +326,7 @@ def LSTM(n_input, n_hidden, n_output, out_every_t=False, loss_function='CE'):
     else:
         cost = cost_steps.mean()
         accuracy = acc_steps.mean()
-        cost_penalty = cost + scale_penalty * ((scale - 1) ** 2).sum()
+        cost_penalty = cost
         costs = [cost_penalty, cost, accuracy]
 
     return [x, y], parameters, costs
@@ -488,8 +494,6 @@ def complex_RNN_LSTM(n_input, n_hidden, n_hidden_lstm, n_output, scale_penalty, 
                                                                                         sequences=sequences,
                                                                                         non_sequences=non_sequences,
                                                                                         outputs_info=outputs_info)
-
-    
     if not out_every_t:
         lin_output = T.dot(hidden_lstm_states[-1,:,:], out_mat) + out_bias.dimshuffle('x', 0)
 
@@ -648,7 +652,7 @@ def complex_RNN(n_input, n_hidden, n_output, scale_penalty, out_every_t=False, l
         if loss_function == 'CE':
             RNN_output = T.nnet.softmax(lin_output)
             cost = T.nnet.categorical_crossentropy(RNN_output, y).mean()
-            cost_penalty = cost + ((scale - 1) ** 2).sum()
+            cost_penalty = cost + scale_penalty * ((scale - 1) ** 2).sum()
 
             # compute accuracy
             accuracy = T.mean(T.eq(T.argmax(RNN_output, axis=-1), T.argmax(y, axis=-1)))
@@ -656,14 +660,14 @@ def complex_RNN(n_input, n_hidden, n_output, scale_penalty, out_every_t=False, l
             costs = [cost_penalty, cost, accuracy]
         elif loss_function == 'MSE':
             cost = ((lin_output - y)**2).mean()
-            cost_penalty = cost + ((scale - 1) ** 2).sum()
+            cost_penalty = cost + scale_penalty * ((scale - 1) ** 2).sum()
 
             costs = [cost_penalty, cost]
 
 
     else:
         cost = cost_steps.mean()
-        cost_penalty = cost + ((scale - 1) ** 2).sum()
+        cost_penalty = cost + scale_penalty * ((scale - 1) ** 2).sum()
         accuracy = acc_steps.mean()
         costs = [cost_penalty, cost, accuracy]
 
