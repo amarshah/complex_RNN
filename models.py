@@ -76,7 +76,6 @@ def times_reflection(input, n_hidden, reflection):
 
     return T.concatenate([input_re_reflect, input_im_reflect], axis=1)      
 
-
 def IRNN(n_input, n_hidden, n_output, out_every_t=False, loss_function='CE'):
     np.random.seed(1234)
     rng = np.random.RandomState(1234)
@@ -88,35 +87,71 @@ def IRNN(n_input, n_hidden, n_output, out_every_t=False, loss_function='CE'):
     h_0 = theano.shared(np.zeros((1, n_hidden)))
     V = initialize_matrix(n_input, n_hidden, 'V', rng)
     W = theano.shared(np.identity(n_hidden, dtype=theano.config.floatX))
-    U = initialize_matrix(n_hidden, n_output, 'U', rng)
+    out_mat = initialize_matrix(n_hidden, n_output, 'out_mat', rng)
     hidden_bias = theano.shared(np.zeros((1, n_hidden), dtype=theano.config.floatX))
     out_bias = theano.shared(np.zeros((1, n_output), dtype=theano.config.floatX))
     parameters = [h_0, V, W, U, hidden_bias, out_bias]
 
     hidden_bias_batch = T.tile(hidden_bias, [x.shape[1], 1])
 
-    def recurrence(x_t, h_prev, V, W, hidden_bias_batch):
-        return T.nnet.relu(T.dot(h_prev, W) + T.dot(x_t, V) + hidden_bias_batch)
+    def recurrence(x_t, h_prev, V, W, hidden_bias_batch, out_mat, out_bias):
+        h_t = T.nnet.relu(T.dot(h_prev, W) + T.dot(x_t, V) + hidden_bias_batch)
+        if out_every_t:
+            lin_output = T.dot(h_t, out_mat) + out_bias.dimshuffle('x', 0)
+            if loss_function == 'CE':
+                RNN_output = T.nnet.softmax(lin_output)
+                cost_t = T.nnet.categorical_crossentropy(RNN_output, y_t).mean()
+                acc_t =(T.eq(T.argmax(RNN_output, axis=-1), T.argmax(y_t, axis=-1))).mean(dtype=theano.config.floatX)
+            elif loss_function == 'MSE':
+                cost_t = ((lin_output - y_t)**2).mean()
+                acc_t = theano.shared(np.float32(0.0))
+        else:
+            cost_t = theano.shared(np.float32(0.0))
+            acc_t = theano.shared(np.float32(0.0))
+ 
+       return 
     
-    non_sequences = [V, W, hidden_bias_batch]
+    non_sequences = [V, W, hidden_bias_batch, out_mat, out_bias]
 
     h_0_batch = T.tile(h_0, [x.shape[1], 1])
 
-    hidden_states, updates = theano.scan(fn = recurrence, sequences = x, non_sequences = non_sequences, outputs_info = h_0_batch)
-
-    # ONE OUTPUT
-    linear_output = T.dot(hidden_states[-1, :, :], U) + out_bias.dimshuffle('x', 0)
+    if out_every_t:
+        sequences = [x, y]
+    else:
+        sequences = [x, T.tile(theano.shared(np.zeros((1,1), dtype=theano.config.floatX)), [x.shape[0], 1, 1])]
     
-    # CALCULATE LOSS
-    output = T.nnet.softmax(linear_output)
-    loss = T.nnet.categorical_crossentropy(output, y).mean()
-    accuracy = T.mean(T.eq(T.argmax(output, axis=-1), T.argmax(y, axis=-1)))
+    [hidden_states, cost_steps, acc_steps], updates = theano.scan(fn = recurrence, sequences = sequences, non_sequences = non_sequences, outputs_info = [h_0_batch, theano.shared(np.float32(0.0)), theano.shared(np.float32(0.0))])
+   
+    if not out_every_t:
+        lin_output = T.dot(hidden_states[-1,:,:], out_mat) + out_bias.dimshuffle('x', 0)
+
+        # define the cost
+        if loss_function == 'CE':
+            RNN_output = T.nnet.softmax(lin_output)
+            cost = T.nnet.categorical_crossentropy(RNN_output, y).mean()
+            cost_penalty = cost + scale_penalty * ((scale - 1) ** 2).sum()
+
+            # compute accuracy
+            accuracy = T.mean(T.eq(T.argmax(RNN_output, axis=-1), T.argmax(y, axis=-1)))
+
+            costs = [cost_penalty, cost, accuracy]
+        elif loss_function == 'MSE':
+            cost = ((lin_output - y)**2).mean()
+            cost_penalty = cost + scale_penalty * ((scale - 1) ** 2).sum()
+
+            costs = [cost_penalty, cost]
 
 
-    costs = [loss, loss, accuracy]
+    else:
+        cost = cost_steps.mean()
+        accuracy = acc_steps.mean()
+        cost_penalty = cost + scale_penalty * ((scale - 1) ** 2).sum()
+        costs = [cost_penalty, cost, accuracy]
+
 
 
     return inputs, parameters, costs
+
 
 def tanhRNN(n_input, n_hidden, n_output, out_every_t=False, loss_function='CE'):
     np.random.seed(1234)
@@ -129,31 +164,67 @@ def tanhRNN(n_input, n_hidden, n_output, out_every_t=False, loss_function='CE'):
     h_0 = theano.shared(np.zeros((1, n_hidden)))
     V = initialize_matrix(n_input, n_hidden, 'V', rng)
     W = initialize_matrix(n_hidden, n_hidden, 'W', rng)
-    U = initialize_matrix(n_hidden, n_output, 'U', rng)
+    out_mat = initialize_matrix(n_hidden, n_output, 'out_mat', rng)
     hidden_bias = theano.shared(np.zeros((1, n_hidden), dtype=theano.config.floatX))
     out_bias = theano.shared(np.zeros((1, n_output), dtype=theano.config.floatX))
     parameters = [h_0, V, W, U, hidden_bias, out_bias]
 
     hidden_bias_batch = T.tile(hidden_bias, [x.shape[1], 1])
 
-    def recurrence(x_t, h_prev, V, W, hidden_bias_batch):
-        return T.tanh(T.dot(h_prev, W) + T.dot(x_t, V) + hidden_bias_batch)
+    def recurrence(x_t, h_prev, V, W, hidden_bias_batch, out_mat, out_bias):
+        h_t = T.tanh(T.dot(h_prev, W) + T.dot(x_t, V) + hidden_bias_batch)
+        if out_every_t:
+            lin_output = T.dot(h_t, out_mat) + out_bias.dimshuffle('x', 0)
+            if loss_function == 'CE':
+                RNN_output = T.nnet.softmax(lin_output)
+                cost_t = T.nnet.categorical_crossentropy(RNN_output, y_t).mean()
+                acc_t =(T.eq(T.argmax(RNN_output, axis=-1), T.argmax(y_t, axis=-1))).mean(dtype=theano.config.floatX)
+            elif loss_function == 'MSE':
+                cost_t = ((lin_output - y_t)**2).mean()
+                acc_t = theano.shared(np.float32(0.0))
+        else:
+            cost_t = theano.shared(np.float32(0.0))
+            acc_t = theano.shared(np.float32(0.0))
+ 
+       return 
     
-    non_sequences = [V, W, hidden_bias_batch]
+    non_sequences = [V, W, hidden_bias_batch, out_mat, out_bias]
 
     h_0_batch = T.tile(h_0, [x.shape[1], 1])
 
-    hidden_states, updates = theano.scan(fn = recurrence, sequences = x, non_sequences = non_sequences, outputs_info = h_0_batch)
-
-    # ONE OUTPUT
-    linear_output = T.dot(hidden_states[-1, :, :], U) + out_bias.dimshuffle('x', 0)
+    if out_every_t:
+        sequences = [x, y]
+    else:
+        sequences = [x, T.tile(theano.shared(np.zeros((1,1), dtype=theano.config.floatX)), [x.shape[0], 1, 1])]
     
-    # CALCULATE LOSS
-    output = T.nnet.softmax(linear_output)
-    loss = T.nnet.categorical_crossentropy(output, y).mean()
-    accuracy = T.mean(T.eq(T.argmax(output, axis=-1), T.argmax(y, axis=-1)))
+    [hidden_states, cost_steps, acc_steps], updates = theano.scan(fn = recurrence, sequences = sequences, non_sequences = non_sequences, outputs_info = [h_0_batch, theano.shared(np.float32(0.0)), theano.shared(np.float32(0.0))])
+   
+    if not out_every_t:
+        lin_output = T.dot(hidden_states[-1,:,:], out_mat) + out_bias.dimshuffle('x', 0)
 
-    costs = [loss, loss, accuracy]
+        # define the cost
+        if loss_function == 'CE':
+            RNN_output = T.nnet.softmax(lin_output)
+            cost = T.nnet.categorical_crossentropy(RNN_output, y).mean()
+            cost_penalty = cost + scale_penalty * ((scale - 1) ** 2).sum()
+
+            # compute accuracy
+            accuracy = T.mean(T.eq(T.argmax(RNN_output, axis=-1), T.argmax(y, axis=-1)))
+
+            costs = [cost_penalty, cost, accuracy]
+        elif loss_function == 'MSE':
+            cost = ((lin_output - y)**2).mean()
+            cost_penalty = cost + scale_penalty * ((scale - 1) ** 2).sum()
+
+            costs = [cost_penalty, cost]
+
+
+    else:
+        cost = cost_steps.mean()
+        accuracy = acc_steps.mean()
+        cost_penalty = cost + scale_penalty * ((scale - 1) ** 2).sum()
+        costs = [cost_penalty, cost, accuracy]
+
 
 
     return inputs, parameters, costs
