@@ -183,9 +183,12 @@ def LSTM(n_input, n_hidden, n_output, out_every_t=False, loss_function='CE'):
     parameters = [W_i, W_f, W_c, W_o, U_i, U_f, U_c, U_o, V_o, b_i, b_f, b_c, b_o, h_0, state_0, out_mat, out_bias]
 
     x = T.tensor3()
-    y = T.matrix()
+    if out_every_t:
+        y = T.tensor3()
+    else:
+        y = T.matrix()
     
-    def recurrence(x_t, h_prev, state_prev, W_i, W_f, W_c, W_o, U_i, U_f, U_c, U_o, V_o, b_i, b_f, b_c, b_o):
+    def recurrence(x_t, h_prev, state_prev, cost_prev, acc_prev, W_i, W_f, W_c, W_o, U_i, U_f, U_c, U_o, V_o, b_i, b_f, b_c, b_o, out_mat, out_bias):
         input_t = T.nnet.sigmoid(T.dot(x_t, W_i) + T.dot(h_prev, U_i) + b_i.dimshuffle('x', 0))
         candidate_t = T.tanh(T.dot(x_t, W_c) + T.dot(h_prev, U_c) + b_c.dimshuffle('x', 0))
         forget_t = T.nnet.sigmoid(T.dot(x_t, W_f) + T.dot(h_prev, U_f) + b_f.dimshuffle('x', 0))
@@ -196,25 +199,58 @@ def LSTM(n_input, n_hidden, n_output, out_every_t=False, loss_function='CE'):
 
         h_t = output_t * T.tanh(state_t)
 
-        return h_t, state_t
+        if out_every_t:
+            lin_output = T.dot(h_t, out_mat) + out_bias.dimshuffle('x', 0)
+            if loss_function == 'CE':
+                RNN_output = T.nnet.softmax(lin_output)
+                cost_t = T.nnet.categorical_crossentropy(RNN_output, y_t).mean()
+                acc_t =(T.eq(T.argmax(RNN_output, axis=-1), T.argmax(y_t, axis=-1))).mean(dtype=theano.config.floatX)
+            elif loss_function == 'MSE':
+                cost_t = ((lin_output - y_t)**2).mean()
+                acc_t = theano.shared(np.float32(0.0))
+        else:
+            cost_t = theano.shared(np.float32(0.0))
+            acc_t = theano.shared(np.float32(0.0))
+ 
+        return h_t, state_t, cost_t, acc_t
 
-    non_sequences = [W_i, W_f, W_c, W_o, U_i, U_f, U_c, U_o, V_o, b_i, b_f, b_c, b_o]
+    non_sequences = [W_i, W_f, W_c, W_o, U_i, U_f, U_c, U_o, V_o, b_i, b_f, b_c, b_o, out_mat, out_bias]
 
     h_0_batch = T.tile(h_0, [x.shape[1], 1])
     state_0_batch = T.tile(state_0, [x.shape[1], 1])
-
-    [hidden_states, states], updates = theano.scan(fn = recurrence, sequences = x, non_sequences = non_sequences, outputs_info = [h_0_batch, state_0_batch])
-
-    # ONE OUTPUT
-    linear_output = T.dot(hidden_states[-1, :, :], out_mat) + out_bias.dimshuffle('x', 0)
     
-    # CALCULATE LOSS
-    output = T.nnet.softmax(linear_output)
-    loss = T.nnet.categorical_crossentropy(output, y).mean()
-    accuracy = T.mean(T.eq(T.argmax(output, axis=-1), T.argmax(y, axis=-1)))
+    if out_every_t:
+        sequences = [x, y]
+    else:
+        sequences = [x, T.tile(theano.shared(np.zeros((1,1), dtype=theano.config.floatX)), [x.shape[0], 1, 1])]
+    
+    [hidden_states, states, cost_steps, acc_steps], updates = theano.scan(fn = recurrence, sequences = sequences, non_sequences = non_sequences, outputs_info = [h_0_batch, state_0_batch, theano.shared(np.float32(0.0)), theano.shared(np.float32(0.0))])
+    
+    if not out_every_t:
+        lin_output = T.dot(hidden_states[-1,:,:], out_mat) + out_bias.dimshuffle('x', 0)
 
-    costs = [loss, loss, accuracy]
+        # define the cost
+        if loss_function == 'CE':
+            RNN_output = T.nnet.softmax(lin_output)
+            cost = T.nnet.categorical_crossentropy(RNN_output, y).mean()
+            cost_penalty = cost + scale_penalty * ((scale - 1) ** 2).sum()
 
+            # compute accuracy
+            accuracy = T.mean(T.eq(T.argmax(RNN_output, axis=-1), T.argmax(y, axis=-1)))
+
+            costs = [cost_penalty, cost, accuracy]
+        elif loss_function == 'MSE':
+            cost = ((lin_output - y)**2).mean()
+            cost_penalty = cost + scale_penalty * ((scale - 1) ** 2).sum()
+
+            costs = [cost_penalty, cost]
+
+
+    else:
+        cost = cost_steps.mean()
+        accuracy = acc_steps.mean()
+        cost_penalty = cost + scale_penalty * ((scale - 1) ** 2).sum()
+        costs = [cost_penalty, cost, accuracy]
 
     return [x, y], parameters, costs
 
@@ -278,7 +314,7 @@ def complex_RNN_LSTM(n_input, n_hidden, n_hidden_lstm, n_output, scale_penalty, 
     index_permute = np.random.permutation(n_hidden)
  
     # define the recurrence used by theano.scan
-    def recurrence(x_t, y_t, h_prev, lstm_h_prev, lstm_state_prev, cost_prev, acc_prev, theta, V_re, V_im, hidden_bias, scale, W_i, W_f, W_c, W_o, U_i, U_f, U_c, U_o, V_o, b_i, b_f, b_c, b_o):  
+    def recurrence(x_t, y_t, h_prev, lstm_h_prev, lstm_state_prev, cost_prev, acc_prev, theta, V_re, V_im, hidden_bias, scale, W_i, W_f, W_c, W_o, U_i, U_f, U_c, U_o, V_o, b_i, b_f, b_c, b_o, out_bias, out_mat):  
         
         
         # Compute hidden linear transform
@@ -375,7 +411,7 @@ def complex_RNN_LSTM(n_input, n_hidden, n_hidden_lstm, n_output, scale_penalty, 
     else:
         sequences = [x, T.tile(theano.shared(np.zeros((1,1), dtype=theano.config.floatX)), [x.shape[0], 1, 1])]
     
-    non_sequences = [theta, V_re, V_im, hidden_bias, scale, W_i, W_f, W_c, W_o, U_i, U_f, U_c, U_o, V_o, b_i, b_f, b_c, b_o]
+    non_sequences = [theta, V_re, V_im, hidden_bias, scale, W_i, W_f, W_c, W_o, U_i, U_f, U_c, U_o, V_o, b_i, b_f, b_c, b_o, out_bias, out_mat]
     outputs_info=[h_0_batch, h_0_lstm_batch, lstm_state_0_batch, theano.shared(np.float32(0.0)), theano.shared(np.float32(0.0))]
     [hidden_states, hidden_lstm_states, lstm_states, cost_steps, acc_steps], updates = theano.scan(fn=recurrence,
                                                                                         sequences=sequences,
@@ -450,7 +486,7 @@ def complex_RNN(n_input, n_hidden, n_output, scale_penalty, out_every_t=False, l
     index_permute = np.random.permutation(n_hidden)
     
     # define the recurrence used by theano.scan
-    def recurrence(x_t, y_t, h_prev, cost_prev, acc_prev, theta, V_re, V_im, hidden_bias, scale):  
+    def recurrence(x_t, y_t, h_prev, cost_prev, acc_prev, theta, V_re, V_im, hidden_bias, scale, out_bias, U):  
 
         # Compute hidden linear transform
         step1 = times_diag(h_prev, n_hidden, theta[0,:])
@@ -524,7 +560,7 @@ def complex_RNN(n_input, n_hidden, n_output, scale_penalty, out_every_t=False, l
 
     # compute hidden states
     h_0_batch = T.tile(h_0, [x.shape[1], 1])
-    non_sequences = [theta, V_re, V_im, hidden_bias, scale]
+    non_sequences = [theta, V_re, V_im, hidden_bias, scale, out_bias, U]
     if out_every_t:
         sequences = [x, y]
     else:
