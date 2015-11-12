@@ -91,14 +91,13 @@ def IRNN(n_input, n_hidden, n_output, out_every_t=False, loss_function='CE'):
     V = initialize_matrix(n_input, n_hidden, 'V', rng)
     W = theano.shared(np.identity(n_hidden, dtype=theano.config.floatX))
     out_mat = initialize_matrix(n_hidden, n_output, 'out_mat', rng)
-    hidden_bias = theano.shared(np.zeros((1, n_hidden), dtype=theano.config.floatX))
-    out_bias = theano.shared(np.zeros((1, n_output), dtype=theano.config.floatX))
+    hidden_bias = theano.shared(np.zeros((n_hidden,), dtype=theano.config.floatX))
+    out_bias = theano.shared(np.zeros((n_output,), dtype=theano.config.floatX))
+
     parameters = [h_0, V, W, out_mat, hidden_bias, out_bias]
 
-    hidden_bias_batch = T.tile(hidden_bias, [x.shape[1], 1])
-
-    def recurrence(x_t, y_t, h_prev, V, W, hidden_bias_batch, out_mat, out_bias):
-        h_t = T.nnet.relu(T.dot(h_prev, W) + T.dot(x_t, V) + hidden_bias_batch)
+    def recurrence(x_t, y_t, h_prev, cost_prev, acc_prev, V, W, hidden_bias, out_mat, out_bias):
+        h_t = T.nnet.relu(T.dot(h_prev, W) + T.dot(x_t, V) + hidden_bias.dimshuffle('x', 0))
         if out_every_t:
             lin_output = T.dot(h_t, out_mat) + out_bias.dimshuffle('x', 0)
             if loss_function == 'CE':
@@ -114,7 +113,7 @@ def IRNN(n_input, n_hidden, n_output, out_every_t=False, loss_function='CE'):
  
         return h_t, cost_t, acc_t
     
-    non_sequences = [V, W, hidden_bias_batch, out_mat, out_bias]
+    non_sequences = [V, W, hidden_bias, out_mat, out_bias]
 
     h_0_batch = T.tile(h_0, [x.shape[1], 1])
 
@@ -123,7 +122,10 @@ def IRNN(n_input, n_hidden, n_output, out_every_t=False, loss_function='CE'):
     else:
         sequences = [x, T.tile(theano.shared(np.zeros((1,1), dtype=theano.config.floatX)), [x.shape[0], 1, 1])]
     
-    [hidden_states, cost_steps, acc_steps], updates = theano.scan(fn = recurrence, sequences = sequences, non_sequences = non_sequences, outputs_info = [h_0_batch, theano.shared(np.float32(0.0)), theano.shared(np.float32(0.0))])
+    [hidden_states, cost_steps, acc_steps], updates = theano.scan(fn=recurrence,
+                                                                  sequences=sequences,
+                                                                  non_sequences=non_sequences,
+                                                                  outputs_info = [h_0_batch, theano.shared(np.float32(0.0)), theano.shared(np.float32(0.0))])
    
     if not out_every_t:
         lin_output = T.dot(hidden_states[-1,:,:], out_mat) + out_bias.dimshuffle('x', 0)
@@ -171,14 +173,14 @@ def tanhRNN(n_input, n_hidden, n_output, out_every_t=False, loss_function='CE'):
     V = initialize_matrix(n_input, n_hidden, 'V', rng)
     W = initialize_matrix(n_hidden, n_hidden, 'W', rng)
     out_mat = initialize_matrix(n_hidden, n_output, 'out_mat', rng)
-    hidden_bias = theano.shared(np.zeros((1, n_hidden), dtype=theano.config.floatX))
-    out_bias = theano.shared(np.zeros((1, n_output), dtype=theano.config.floatX))
+    hidden_bias = theano.shared(np.zeros((n_hidden,), dtype=theano.config.floatX))
+    out_bias = theano.shared(np.zeros((n_output,), dtype=theano.config.floatX))
     parameters = [h_0, V, W, out_mat, hidden_bias, out_bias]
 
-    hidden_bias_batch = T.tile(hidden_bias, [x.shape[1], 1])
+#    hidden_bias_batch = T.tile(hidden_bias, [x.shape[1], 1])
 
-    def recurrence(x_t, y_t, h_prev, V, W, hidden_bias_batch, out_mat, out_bias):
-        h_t = T.tanh(T.dot(h_prev, W) + T.dot(x_t, V) + hidden_bias_batch)
+    def recurrence(x_t, y_t, h_prev, cost_prev, acc_prev, V, W, hidden_bias, out_mat, out_bias):
+        h_t = T.tanh(T.dot(h_prev, W) + T.dot(x_t, V) + hidden_bias.dimshuffle('x', 0))
         if out_every_t:
             lin_output = T.dot(h_t, out_mat) + out_bias.dimshuffle('x', 0)
             if loss_function == 'CE':
@@ -194,7 +196,7 @@ def tanhRNN(n_input, n_hidden, n_output, out_every_t=False, loss_function='CE'):
  
         return h_t, cost_t, acc_t 
     
-    non_sequences = [V, W, hidden_bias_batch, out_mat, out_bias]
+    non_sequences = [V, W, hidden_bias, out_mat, out_bias]
 
     h_0_batch = T.tile(h_0, [x.shape[1], 1])
 
@@ -203,7 +205,10 @@ def tanhRNN(n_input, n_hidden, n_output, out_every_t=False, loss_function='CE'):
     else:
         sequences = [x, T.tile(theano.shared(np.zeros((1,1), dtype=theano.config.floatX)), [x.shape[0], 1, 1])]
     
-    [hidden_states, cost_steps, acc_steps], updates = theano.scan(fn = recurrence, sequences = sequences, non_sequences = non_sequences, outputs_info = [h_0_batch, theano.shared(np.float32(0.0)), theano.shared(np.float32(0.0))])
+    [hidden_states, cost_steps, acc_steps], updates = theano.scan(fn=recurrence,
+                                                                  sequences=sequences,
+                                                                  non_sequences=non_sequences,
+                                                                  outputs_info = [h_0_batch, theano.shared(np.float32(0.0)), theano.shared(np.float32(0.0))])
    
     if not out_every_t:
         lin_output = T.dot(hidden_states[-1,:,:], out_mat) + out_bias.dimshuffle('x', 0)
@@ -513,7 +518,6 @@ def complex_RNN_LSTM(n_input, n_hidden, n_hidden_lstm, n_output, scale_penalty, 
 
             costs = [cost_penalty, cost]
 
-
     else:
         cost = cost_steps.mean()
         accuracy = acc_steps.mean()
@@ -565,11 +569,13 @@ def complex_RNN(n_input, n_hidden, n_output, scale_penalty, out_every_t=False, l
 
         # Compute hidden linear transform
         step1 = times_diag(h_prev, n_hidden, theta[0,:])
-        step2 = do_fft(step1, n_hidden)
+        step2 = step1
+#        step2 = do_fft(step1, n_hidden)
         step3 = times_reflection(step2, n_hidden, reflection[0,:])
         step4 = vec_permutation(step3, n_hidden, index_permute)
         step5 = times_diag(step4, n_hidden, theta[1,:])
-        step6 = do_ifft(step5, n_hidden)
+        step6 = step5
+#        step6 = do_ifft(step5, n_hidden)
         step7 = times_reflection(step6, n_hidden, reflection[1,:])
         step8 = times_diag(step7, n_hidden, theta[2,:])     
         step9 = scale_diag(step8, n_hidden, scale)
@@ -589,32 +595,12 @@ def complex_RNN(n_input, n_hidden, n_output, scale_penalty, out_every_t=False, l
 
         # Apply non-linearity ----------------------------
 
-        # nonlinear mod and phase operations
-#        lin_output_mod = T.sqrt(lin_output_re ** 2 + lin_output_im ** 2)
-#        lin_output_phase = T.arctan(lin_output_im / (lin_output_re + 1e-5))
-        
-#        nonlin_output_mod = T.maximum(lin_output_mod + hidden_bias.dimshuffle('x',0), 0.) \
-#            / (lin_output_mod + 1e-5)
-#        m1 = T.exp(log_phase_bias[:n_hidden])
-#        m2 = T.exp(log_phase_bias[n_hidden:])
-#        left = (lin_output_phase + 0.5 * np.pi) * m1.dimshuffle('x',0) - 0.5 * np.pi
-#        right = (lin_output_phase - 0.5 * np.pi) * m2.dimshuffle('x',0) + 0.5 * np.pi
-#        condition = - 0.5 * np.pi * (m1 + m2 - 2) / (m1 - m2)
-#        nonlin_output_phase = T.switch(T.lt(lin_output_phase, condition), left, right)
-
-#        nonlin_output_re = nonlin_output_mod * T.cos(nonlin_output_phase)
-#        nonlin_output_im = nonlin_output_mod * T.sin(nonlin_output_phase)
-
 
         # scale RELU nonlinearity
         modulus = T.sqrt(lin_output_re ** 2 + lin_output_im ** 2)
         rescale = T.maximum(modulus + hidden_bias.dimshuffle('x',0), 0.) / (modulus + 1e-5)
         nonlin_output_re = lin_output_re * rescale
         nonlin_output_im = lin_output_im * rescale
-
-        # relu on each part
-#        nonlin_output_re = T.maximum(lin_output_re + hidden_bias.dimshuffle('x', 0), 0.)
-#        nonlin_output_im = T.maximum(lin_output_im + hidden_bias.dimshuffle('x', 0), 0.)        
 
         h_t = T.concatenate([nonlin_output_re, 
                              nonlin_output_im], axis=1) 
@@ -641,9 +627,9 @@ def complex_RNN(n_input, n_hidden, n_output, scale_penalty, out_every_t=False, l
     else:
         sequences = [x, T.tile(theano.shared(np.zeros((1,1), dtype=theano.config.floatX)), [x.shape[0], 1, 1])]
     [hidden_states, cost_steps, acc_steps], updates = theano.scan(fn=recurrence,
-                                         sequences=sequences,
-                                         non_sequences=non_sequences,
-                                         outputs_info=[h_0_batch, theano.shared(np.float32(0.0)), theano.shared(np.float32(0.0))])
+                                                                  sequences=sequences,
+                                                                  non_sequences=non_sequences,
+                                                                  outputs_info=[h_0_batch, theano.shared(np.float32(0.0)), theano.shared(np.float32(0.0))])
 
     if not out_every_t:
         lin_output = T.dot(hidden_states[-1,:,:], U) + out_bias.dimshuffle('x', 0)
