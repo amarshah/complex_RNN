@@ -93,7 +93,7 @@ def IRNN(n_input, n_hidden, n_output, out_every_t=False, loss_function='CE'):
     out_mat = initialize_matrix(n_hidden, n_output, 'out_mat', rng)
     hidden_bias = theano.shared(np.zeros((1, n_hidden), dtype=theano.config.floatX))
     out_bias = theano.shared(np.zeros((1, n_output), dtype=theano.config.floatX))
-    parameters = [h_0, V, W, U, hidden_bias, out_bias]
+    parameters = [h_0, V, W, out_mat, hidden_bias, out_bias]
 
     hidden_bias_batch = T.tile(hidden_bias, [x.shape[1], 1])
 
@@ -173,7 +173,7 @@ def tanhRNN(n_input, n_hidden, n_output, out_every_t=False, loss_function='CE'):
     out_mat = initialize_matrix(n_hidden, n_output, 'out_mat', rng)
     hidden_bias = theano.shared(np.zeros((1, n_hidden), dtype=theano.config.floatX))
     out_bias = theano.shared(np.zeros((1, n_output), dtype=theano.config.floatX))
-    parameters = [h_0, V, W, U, hidden_bias, out_bias]
+    parameters = [h_0, V, W, out_mat, hidden_bias, out_bias]
 
     hidden_bias_batch = T.tile(hidden_bias, [x.shape[1], 1])
 
