@@ -1,6 +1,7 @@
 import cPickle
 import gzip
 import theano
+import pdb
 from fftconv import cufft, cuifft
 import numpy as np
 import theano.tensor as T
@@ -12,87 +13,64 @@ import argparse, timeit
 # Warning: assumes n_batch is a divisor of number of data points
 # Suggestion: preprocess outputs to have norm 1 at each time step
 def main(n_iter, n_batch, n_hidden, time_steps, learning_rate, savefile, scale_penalty, use_scale,
-         model, n_hidden_lstm, loss_function):
+         model, n_hidden_lstm, loss_function, cost_every_t):
 
-    #import pdb; pdb.set_trace()
- 
-    # --- Set optimization params --------
-    gradient_clipping = np.float32(50000)
-
-    # --- Set data params ----------------
-    n_input = 2
-    n_output = 1
-  
 
     # --- Manage data --------------------
-    n_train = 1e5
-    n_test = 1e4
-    num_batches = n_train / n_batch
-    
-    train_x = np.asarray(np.zeros((time_steps, n_train, 2)),
-                         dtype=theano.config.floatX)
-    
-
-    train_x[:,:,0] = np.asarray(np.random.uniform(low=0.,
-                                                  high=1.,
-                                                  size=(time_steps, n_train)),
-                                dtype=theano.config.floatX)
-    
-#    inds = np.asarray([np.random.choice(time_steps, 2, replace=False) for i in xrange(train_x.shape[1])])    
-    inds = np.asarray(np.random.randint(time_steps/2, size=(train_x.shape[1],2)))
-    inds[:, 1] += time_steps/2  
-    
-    for i in range(train_x.shape[1]):
-        train_x[inds[i, 0], i, 1] = 1.0
-        train_x[inds[i, 1], i, 1] = 1.0
- 
-    train_y = (train_x[:,:,0] * train_x[:,:,1]).sum(axis=0)
-    train_y = np.reshape(train_y, (n_train, 1))
-
-    test_x = np.asarray(np.zeros((time_steps, n_test, 2)),
-                        dtype=theano.config.floatX)
-    
-
-    test_x[:,:,0] = np.asarray(np.random.uniform(low=0.,
-                                                 high=1.,
-                                                 size=(time_steps, n_test)),
-                                dtype=theano.config.floatX)
-    
-    inds = np.asarray([np.random.choice(time_steps, 2, replace=False) for i in xrange(test_x.shape[1])])    
-    for i in range(test_x.shape[1]):
-        test_x[inds[i, 0], i, 1] = 1.0
-        test_x[inds[i, 1], i, 1] = 1.0
- 
-   
-    test_y = (test_x[:,:,0] * test_x[:,:,1]).sum(axis=0)
-    test_y = np.reshape(test_y, (n_test, 1)) 
+    f = file('/u/shahamar/complex_RNN/trainingRNNs-master/memory_data_300.pkl', 'rb')
+    dict = cPickle.load(f)
+    f.close()
 
 
+    train_x = dict['train_x'] 
+    train_y = dict['train_y']
+    test_x = dict['test_x'] 
+    test_y = dict['test_y'] 
+
+
+    #import pdb; pdb.set_trace()
+    #cPickle.dump(dict, file('/u/shahamar/complex_RNN/trainingRNNs-master/memory_data.pkl', 'wb'))
+
+    #import pdb; pdb.set_trace()
+
+    n_train = train_x.shape[1]
+    n_test = test_x.shape[1]
+    n_input = train_x.shape[2]
+    n_output = train_y.shape[2]
+
+    num_batches = int(n_train / n_batch)
+    time_steps = train_x.shape[0]
+    
    #######################################################################
 
     gradient_clipping = np.float32(1)
 
     if (model == 'LSTM'):   
-        inputs, parameters, costs = LSTM(n_input, n_hidden_lstm, n_output, loss_function=loss_function)
+        inputs, parameters, costs = LSTM(n_input, n_hidden_lstm, n_output,
+                                         out_every_t=cost_every_t, loss_function=loss_function)
         gradients = T.grad(costs[0], parameters)
         gradients = [T.clip(g, -gradient_clipping, gradient_clipping) for g in gradients]
 
     elif (model == 'complex_RNN'):
-        inputs, parameters, costs = complex_RNN(n_input, n_hidden, n_output, scale_penalty, loss_function=loss_function)
+        inputs, parameters, costs = complex_RNN(n_input, n_hidden, n_output, scale_penalty,
+                                                out_every_t=cost_every_t, loss_function=loss_function)
         if use_scale is False:
             parameters.pop()
         gradients = T.grad(costs[0], parameters)
 
     elif (model == 'complex_RNN_LSTM'):
-        inputs, parameters, costs = complex_RNN_LSTM(n_input, n_hidden, n_hidden_lstm, n_output, scale_penalty, loss_function=loss_function)
+        inputs, parameters, costs = complex_RNN_LSTM(n_input, n_hidden, n_hidden_lstm, n_output, scale_penalty,
+                                                     out_every_t=cost_every_t, loss_function=loss_function)
 
     elif (model == 'IRNN'):
-        inputs, parameters, costs = IRNN(n_input, n_hidden, n_output, loss_function=loss_function)
+        inputs, parameters, costs = IRNN(n_input, n_hidden, n_output,
+                                         out_every_t=cost_every_t, loss_function=loss_function)
         gradients = T.grad(costs[0], parameters)
         gradients = [T.clip(g, -gradient_clipping, gradient_clipping) for g in gradients]
 
     elif (model == 'RNN'):
-        inputs, parameters, costs = tanhRNN(n_input, n_hidden, n_output, loss_function=loss_function)
+        inputs, parameters, costs = tanhRNN(n_input, n_hidden, n_output,
+                                            out_every_t=cost_every_t, loss_function=loss_function)
         gradients = T.grad(costs[0], parameters)
         gradients = [T.clip(g, -gradient_clipping, gradient_clipping) for g in gradients]
 
@@ -120,7 +98,7 @@ def main(n_iter, n_batch, n_hidden, time_steps, learning_rate, savefile, scale_p
     updates, rmsprop = rms_prop(learning_rate, parameters, gradients)
 
     givens = {inputs[0] : s_train_x[:, n_batch * index : n_batch * (index + 1), :],
-              inputs[1] : s_train_y[n_batch * index : n_batch * (index + 1), :]}
+              inputs[1] : s_train_y[:, n_batch * index : n_batch * (index + 1), :]}
 
     givens_test = {inputs[0] : s_test_x,
                    inputs[1] : s_test_y}
@@ -132,7 +110,7 @@ def main(n_iter, n_batch, n_hidden, time_steps, learning_rate, savefile, scale_p
 
     # --- Training Loop ---------------------------------------------------------------
 
-    # f1 = file('/data/lisatmp3/shahamar/adding/complexRNN_400.pkl', 'rb')
+    # f1 = file('/data/lisatmp3/shahamar/memory/RNN_100.pkl', 'rb')
     # data1 = cPickle.load(f1)
     # f1.close()
     # train_loss = data1['train_loss']
@@ -145,8 +123,7 @@ def main(n_iter, n_batch, n_hidden, time_steps, learning_rate, savefile, scale_p
 
     # for i in xrange(len(parameters)):
     #     rmsprop[i].set_value(data1['rmsprop'][i])
-    
-#    import pdb; pdb.set_trace()
+
 
     train_loss = []
     test_loss = []
@@ -154,7 +131,7 @@ def main(n_iter, n_batch, n_hidden, time_steps, learning_rate, savefile, scale_p
     best_test_loss = 1e6
     for i in xrange(n_iter):
 #        start_time = timeit.default_timer()
-
+     #   pdb.set_trace()
 
         if (n_iter % int(num_batches) == 0):
             #import pdb; pdb.set_trace()
@@ -162,7 +139,7 @@ def main(n_iter, n_batch, n_hidden, time_steps, learning_rate, savefile, scale_p
             data_x = s_train_x.get_value()
             s_train_x.set_value(data_x[:,inds,:])
             data_y = s_train_y.get_value()
-            s_train_y.set_value(data_y[inds,:])
+            s_train_y.set_value(data_y[:,inds,:])
 
 
         mse = train(i % int(num_batches))
@@ -183,7 +160,6 @@ def main(n_iter, n_batch, n_hidden, time_steps, learning_rate, savefile, scale_p
                 best_params = [p.get_value() for p in parameters]
                 best_test_loss = mse
 
-            
             save_vals = {'parameters': [p.get_value() for p in parameters],
                          'rmsprop': [r.get_value() for r in rmsprop],
                          'train_loss': train_loss,
@@ -217,6 +193,8 @@ if __name__=="__main__":
     parser.add_argument("model", default='complex_RNN')
     parser.add_argument("n_hidden_lstm", type=int, default=100)
     parser.add_argument("loss_function", default='MSE')
+    parser.add_argument("cost_every_t", default=False)
+
 
     args = parser.parse_args()
     dict = vars(args)
@@ -235,6 +213,7 @@ if __name__=="__main__":
               'use_scale': dict['use_scale'],
               'model': dict['model'],
               'n_hidden_lstm': dict['n_hidden_lstm'],
-              'loss_function': dict['loss_function']}
+              'loss_function': dict['loss_function'],
+              'cost_every_t': dict['cost_every_t']}
 
     main(**kwargs)
