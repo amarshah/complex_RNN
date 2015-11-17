@@ -122,7 +122,7 @@ where $\matr{D}$ is a diagonal such that $\matr{D}_{j,j} = e^{i w_j}$. By restri
   A complex square matrix $\matr{W}$ is unitary if and only if it has an eigendecomposition of the form $\matr{W} = \matr{V} \matr{D} \matr{V}^*$. Here, $\matr{V}, \matr{D} \in \mathbb{C}^{n \times n}$ are complex matrices, where $\matr{V}$ is unitary, and $\matr{D}$ is a diagonal such that $|\matr{D}_{j,j}|=1$. Furthermore, $\matr{W}$ is a real orthogonal matrix if and only if for every eigenvalue $\matr{D}_{j,j} = \lambda_j$ with eigenvector $v_j$, there is also an eigenvalue $\lambda_k = \overline{\lambda_j}$ with corresponding eigenvector $v_k = \overline{v_j}$
 \end{lemma}
 \begin{proof}
-  See \ref{linalgbook}
+  See \cite{linalgbook}
 \end{proof}
 
 To achieve a real orthogonal matrix $\matr{W}$ we require a fixed unitary matrix $\matr{V}$, whose columns come in complex conjugate pairs $v_k = \overline{v_j}$. Similarly, we should also tie $w_k=-w_j$ in order to achieve $e^{i w_j} = \overline{e^{i w_k}}$. $\matr{W}$ is subsequently real and orthogonal by the lemma. Since $w_j$ are real numbers and if the cost is differentiable with respect to them, we can learn these weights by gradient descent. 
