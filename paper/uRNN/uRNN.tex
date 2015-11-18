@@ -201,7 +201,7 @@ We experimented with several initialization strategies. However, because of the 
 \end{itemize}
 
 \section{Experiments}
-In this section we show the performance of our uRRN on several tasks related to learning long-term dependencies. These problems were especially created to be pathologically hard, and have been used as benchmarks for testing the capacity of a model to capture long-term memory \citep{LSTM} \citep{HF} \citep{Quoc2015}.
+In this section we show the performance of our uRNN on several tasks related to learning long-term dependencies. These problems were especially created to be pathologically hard, and have been used as benchmarks for testing the capacity of a model to capture long-term memory \citep{LSTM} \citep{HF} \citep{Quoc2015}.
 
 \subsection{Copying memory problem}
 Recurrent networks have major issues when the outputs they try to model depend on inputs that were sent a long time ago \citep{Yoshua94} \citep{Pascanu2013}. Therefore, it is a natural task to ask a recurrent network to reproduce exactly an input it has seen long ago.
@@ -239,15 +239,42 @@ A baseline can be established by realizing what the best strategy is without rem
   \end{minipage} 
 \end{figure}
 
+We ran these experiments for an RNN with tanh activations, an LSTM and an IRNN to compare with our uRNN. All networks except the uRNN have 32 hidden units. This results in about 1000 parameters for the RNN and IRNN, and 4000 for the LSTM. The uRNN was run with 128 hidden units, or about 1900 parameters (less than half as the LSTM). All experiments where done using RMSPROP \citep{RMSPROP}. The IRNN was extremely unstable throughout the experimentation, and we could avoid divergence only with a delay of 100 and learning rate of $10^{-8}$. Because of this, it is not included in the figures, and the plot for this IRNN is shown in the appendix.
+
 In figure 1, we see that except in the simplest case both the RNN with tanh and more surprisingly the LSTMs get almost exactly the same cost as the memoryless strategy. This behaviour is consistent with the results of \cite{NTM}, in which poor performance is evidenced by LSTMs for a very similar problem.
 
 What is very interesting is not only the fact that the uRNN displays perfect performance in very little iterations, but how qualitatively different the results are from the LSTM. One of the most noticeable features is that it goes from initialization to almost 0 cost without staying at the baseline. In contrast, for the first plot, the LSTM stays on the baseline for a while, before starting to improve very slowly. This evidences the fact that the uRNN is a very different model than both LSTMs and classical RNNs, potentially achieving very different internal representations.
 
 \subsection{Adding Problem}
-LSTM
+In this problem, the input consists of two sequences of length $T$. The first sequence (let's call it $x$) consists of numbers sampled uniformly at random from a uniform $\mathcal{U}[0,1]$. The second one consists of all zeros, except for two positions that are 1. This two positions (let's call them $i$ and $j$) are sampled at random from the first and second half respectively. An output is given only after the last time step, and it is $x_i + x_j$ (i.e. the numbers from the first sequence in the marked positions).
+
+\begin{figure}[ht] 
+  \label{ fig7} 
+  \begin{minipage}[b]{0.5\linewidth}
+    \centering
+    \includegraphics[scale=0.25]{figures/memory_100.jpeg}
+    \vspace{4ex}
+  \end{minipage}%%
+  \begin{minipage}[b]{0.5\linewidth}
+    \centering
+    \includegraphics[scale=0.25]{figures/memory_200.jpeg}
+    \vspace{4ex}
+    \end{minipage} 
+  \begin{minipage}[b]{0.5\linewidth}
+    \centering
+    \includegraphics[scale=0.25]{figures/memory_300.jpeg}
+    \vspace{4ex}
+    \end{minipage}%% 
+  \begin{minipage}[b]{0.5\linewidth}
+    \centering
+    \includegraphics[scale=0.25]{figures/memory_500.jpeg}
+    \vspace{4ex}
+  \end{minipage} 
+\end{figure}
+
 
 \subsection{Pixel-by-pixel MNIST}
-IRRN
+IRNN
 
 \subsection{Optimization experiments}
 Ian Good
