@@ -76,9 +76,9 @@ considered in the sequence of states grow, the shrinking or expanding effects as
 transformation at individual time steps can grow exponentially, yielding respectively vanishing or exploding
 gradients. See~\citet{Pascanu+al-ICML2013-small} for a review.
 
-Although the long-term dependencies problem appears intractable in the absolute~\citep{Yoshua} for
+Although the long-term dependencies problem appears intractable in the absolute~\citep{Yoshua94} for
 parametrized dynamical systems, several heuristics have been found in recent years to help considerably
-reduce its effect, such as the use of self-loops and gating units in the LSTM~\citep{Hochreiter+Schmidhuber-1997}
+reduce its effect, such as the use of self-loops and gating units in the LSTM~\citep{LSTM}
 and GRU~\citep{Cho2014a} recurrent architectures.
 Recent work also supports the idea of using \textit{orthogonal} weight matrices to assist optimization  
 \citep{Saxe2014} \citep{Quoc2015}. A matrix, $\matr{W}$, is orthogonal if 
@@ -420,22 +420,22 @@ In this problem, the input consists of two sequences of length $T$. The first se
   \label{ fig7} 
   \begin{minipage}[b]{0.5\linewidth}
     \centering
-    \includegraphics[scale=0.25]{figures/adding_200.jpeg}
+    \includegraphics[scale=0.25]{figures/memory_100.jpeg}
     \vspace{4ex}
   \end{minipage}%%
   \begin{minipage}[b]{0.5\linewidth}
     \centering
-    \includegraphics[scale=0.25]{figures/adding_400.jpeg}
+    \includegraphics[scale=0.25]{figures/adding_200.jpeg}
     \vspace{4ex}
     \end{minipage} 
   \begin{minipage}[b]{0.5\linewidth}
     \centering
-    \includegraphics[scale=0.25]{figures/memory_300.jpeg}
+    \includegraphics[scale=0.25]{figures/adding_400.jpeg}
     \vspace{4ex}
     \end{minipage}%% 
   \begin{minipage}[b]{0.5\linewidth}
     \centering
-    \includegraphics[scale=0.25]{figures/memory_500.jpeg}
+    \includegraphics[scale=0.25]{figures/adding_750.jpeg}
     \vspace{4ex}
   \end{minipage} 
 \end{figure}
