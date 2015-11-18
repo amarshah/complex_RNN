@@ -63,12 +63,24 @@ Deep Neural Networks have shown remarkably good performance on a wide range of c
 including speech recognition \citep{Hinton2012}, image recognition \citep{Krizhevsky2012} and natural 
 language processing \citep{Collobert2011}. However, training very deep models remains a difficult task. 
 The main issue surrounding the 
-training of deep networks is the {\it{vanishing}} and {\it{exploding}} gradients problems described in 
-\cite{Yoshua94}. If gradients propagated back through a network vanish, information does not effectively
-transfer through the layers. If gradients explode, gradient based optimization algorithms struggle to 
-traverse down a cost surface.
+training of deep networks is the {\it{vanishing}} and {\it{exploding}} gradients problems
+introduced by~\citet{Hochreiter91-small} and shown by~\citet{Yoshua94} to be necessarily arising when trying to learn
+to reliably store bits of information in any parametrized dynamical system.
+If gradients propagated back through a network vanish, the credit assignment role of backpropagation
+is lost, as information about small changes in states in the far past has no influence on future states.
+If gradients explode, gradient based optimization algorithms struggle to 
+traverse down a cost surface, because gradient-based optimization relies on smoothness of
+the objective: it assumes that a small change in the parameters will yield a small change in the objective function,
+and this assumption is violated when very large gradients occur. As the number of time steps
+considered in the sequence of states grow, the shrinking or expanding effects associated with the state-to-state
+transformation at individual time steps can grow exponentially, yielding respectively vanishing or exploding
+gradients. See~\citet{Pascanu+al-ICML2013-small} for a review.
 
-Recent work supports the idea of using \textit{orthogonal} weight matrices to assist optimization  
+Although the long-term dependencies problem appears intractable in the absolute~\citep{Yoshua} for
+parametrized dynamical systems, several heuristics have been found in recent years to help considerably
+reduce its effect, such as the use of self-loops and gating units in the LSTM~\citep{Hochreiter+Schmidhuber-1997}
+and GRU~\citep{Cho2014a} recurrent architectures.
+Recent work also supports the idea of using \textit{orthogonal} weight matrices to assist optimization  
 \citep{Saxe2014} \citep{Quoc2015}. A matrix, $\matr{W}$, is orthogonal if 
 $\matr{W}^\top \matr{W} = \matr{W} \matr{W}^\top = \matr{I}$. 
 Orthogonal matrices have the property that they preserve norm (i.e. $\| \matr{W} h \|_2 = \| h \|_2$)
