@@ -20,8 +20,8 @@ Cambridge University \\
 \texttt{as793@cam.ac.uk} \\
 \AND
 Yoshua Bengio \\
-Universit\'e de Montr\'eal, CIFAR Senior Fellow\\
-\texttt{yoshua.bengio@gmail.com} \\
+Universit\'e de Montr\'eal, CIFAR Senior Fellow
+% YB: I prefer to not put my e-mail address on papers
 }
 
 % The \author macro works with any number of authors. There are two commands
@@ -50,9 +50,10 @@ Universit\'e de Montr\'eal, CIFAR Senior Fellow\\
 Recurrent neural networks (RNNs) are notoriously difficult to train. When the eigenvalues of the hidden to hidden weight matrix
 deviate from absolute value 1, optimization becomes difficult due to the well studied issue of {\it{vanishing}} and {\it{exploding}} gradients, especially when trying to learn long-term dependencies.
 To circumvent this problem, we propose a new architecture that learns a unitary weight matrix, with eigenvalues
-of absolute value exactly 1. We construct an expressive unitary weight matrix by composing several structured matrices that act
-as building blocks with parameters to be learned. Optimization of this parameterization becomes feasible only when considering hidden
-states in the complex domain. We demonstrate the potential of this architecture by achieving state of the art in several hard tasks
+of absolute value exactly 1. The challenge we address is that of parametrizing unitary matrices in a way that does not require expensive computations (such as eigendecomposition) after each weight update. We construct an expressive unitary weight matrix by composing several structured matrices that act
+as building blocks with parameters to be learned. Optimization with this parameterization becomes feasible only when considering hidden
+states in the complex domain. We demonstrate the potential of this architecture by achieving state of the art
+results in several hard tasks
 involving very long-term dependencies.
 
 \end{abstract}
