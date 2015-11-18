@@ -57,46 +57,108 @@ involving very long-term dependencies.
 
 \end{abstract}
 
-
 \section{Introduction}
+Deep Neural Networks have shown remarkably good performance on a wide range of complex data problems 
+including speech recognition \citep{Hinton2012}, image recognition \citep{Krizhevsky2012} and natural 
+language processing \citep{Collobert2011}. However, training very deep models remains a difficult task. 
+The main issue surrounding the 
+training of deep networks is the {\it{vanishing}} and {\it{exploding}} gradients problems described in 
+\cite{Yoshua94}. If gradients propagated back through a network vanish, information does not effectively
+transfer through the layers. If gradients explode, gradient based optimization algorithms struggle to 
+traverse down a cost surface.
 
-Deep Neural Networks have shown increasingly good performance on a wide range of real life problems including speech recognition \citep{Hinton2012}, image recognition \citep{Krizhevsky2012} and natural language processing \citep{Collobert2011}. However, training very deep models is still a difficult task, and it becomes increasingly difficult as depth is increased. The main issue that surrounds the challenges of training deep networks is the {\it{vanishing}} and {\it{exploding}} gradients problems described in \cite{Yoshua94}. The {\it{exploding}} gradient problem results in poor optimization, while the {\it{vanishing}} gradient problem results in learning effectively only the last layers of the network.
+Recent work supports the idea of using \textit{orthogonal} weight matrices to assist optimization  
+\citep{Saxe2014} \citep{Quoc2015}. A matrix, $\matr{W}$, is orthogonal if 
+$\matr{W}^\top \matr{W} = \matr{W} \matr{W}^\top = \matr{I}$. 
+Orthogonal matrices have the property that they preserve norm (i.e. $\| \matr{W} h \|_2 = \| h \|_2$)
+and hence repeated iterative multiplication of a vector by an orthogonal matrix leaves the norm of the 
+vector unchanged.
 
-There has been support in recent literature for using orthogonal weight matrices to help optimization \citep{Saxe2014} \citep{Quoc2015}.Orthogonal matrices have the property that they are norm preserving (i.e. $\| \matr{W} h \|_2 = \| h \|_2$). This means that you can multiply a vector with orthogonal matrices for as long as you want, without the norm of the vector blowing up or shrinking. In fact, let $h_T$ and $h_t$ be the hidden unit vectors for hidden layers $T$ and $t$ respectively, with $T >> t$ (for example with $T$ the final layer). If $C$ is the cost we are trying to minimize, then the {\it{vanishing}} and {\it{exploding}} gradient problems refer to the decay or growth of $\frac{\partial C}{\partial h_t}$ as the amount of layers increases (meaning $T \to \infty$). If
-
+Let $h_T$ and $h_t$ be the hidden unit vectors for hidden layers $T$ and $t$ of a neural network with 
+$T$ hidden layers and $T \gg t$. 
+If $C$ is the objective we are trying to minimize, then the {\it{vanishing}} and {\it{exploding}} 
+gradient problem refer to the decay or growth of $\frac{\partial C}{\partial h_t}$ as the 
+number of layers, $T$, grows. Let $\sigma$ be a pointwise nonlinearity function, and
 \begin{equation}
   z_{t+1} = \matr{W}_t h_t + \matr{V}_t x_{t+1}
+\label{linoutput}
 \end{equation}
 \begin{equation}
   h_{t+1} = \sigma (z_{t+1})
+\label{nonlinoutput}
 \end{equation}
 
-then it's easy to show by the chain rule
+then by the chain rule
 \begin{equation}
-  \frac{\partial C}{\partial h_t} = \frac{\partial C}{\partial h_T} \frac{\partial h_T}{\partial h_t} = \frac{\partial C}{\partial h_T} \prod_{k=t}^{T-1} \frac{\partial h_{k+1}}{\partial h_k} = \frac{\partial C}{\partial h_T} \prod_{k=t}^{T-1} \matr{D}_{k+1} \matr{W}_k^T
+  \frac{\partial C}{\partial h_t} = \frac{\partial C}{\partial h_T} \frac{\partial h_T}{\partial h_t} 
+  = \frac{\partial C}{\partial h_T} \prod_{k=t}^{T-1} \frac{\partial h_{k+1}}{\partial h_k} 
+  = \frac{\partial C}{\partial h_T} \prod_{k=t}^{T-1} \matr{D}_{k+1} \matr{W}_k^T ,
 \end{equation}
 
-Where $\matr{D}_{k+1} = diag(\sigma'(z_{k+1}))$ is the Jacobian matrix of the nonlinearity. Since the nonlinearity is evaluated pointwise, this Jacobian matrix is clearly diagonal.
+where $\matr{D}_{k+1} = diag(\sigma'(z_{k+1}))$ is the Jacobian matrix of the pointwise nonlinearity.
 
-In the following we will use the norm of a matrix to mean the spectral radius (i. e. operator 2-norm) and the norm of a vector to mean $L_2$-norm. It's good to remember that with these norms, for any matrices $\matr{A}, \matr{B}$ and vector $v$ we have by definition $\norm{\matr{A}v} \leq \norm{\matr{A}} \norm{v}$ and $\norm{\matr{A}\matr{B}} \leq \norm{\matr{A}} \norm{\matr{B}}$.
-
-If the weight matrices $\matr{W}_k$ are norm preserving (i.e. orthogonal or unitary), then we can {\bf{prove}}
+In the following we define to the norm of a matrix to refer to the spectral radius norm (or operator 2-norm)
+and the norm of a vector to mean $L_2$-norm. By definition of the operator norms, 
+for any matrices $\matr{A}, \matr{B}$ and vector $v$ we have $\norm{\matr{A}v} \leq \norm{\matr{A}} \norm{v}$ and $\norm{\matr{A}\matr{B}} \leq \norm{\matr{A}} \norm{\matr{B}}$.
+If the weight matrices $\matr{W}_k$ are norm preserving (i.e. orthogonal), then we {\bf{prove}}
 \begin{equation}
-  \norm{ \frac{\partial C}{\partial h_t} } = \norm{ \frac{\partial C}{\partial h_T} \prod_{k=t}^{T-1} \matr{D}_{k+1} \matr{W}_k^T } \leq \norm{\frac{\partial C}{\partial h_T}} \prod_{k=t}^{T-1} \norm{ \matr{D}_{k+1} \matr{W}_k^T } = \norm{ \frac{\partial C}{\partial h_T}} \prod_{k=t}^{T-1} \norm{\matr{D}_{k+1}}
+  \norm{ \frac{\partial C}{\partial h_t} } = \norm{ \frac{\partial C}{\partial h_T} 
+  \prod_{k=t}^{T-1} \matr{D}_{k+1} \matr{W}_k^T } \leq \norm{\frac{\partial C}{\partial h_T}} 
+  \prod_{k=t}^{T-1} \norm{ \matr{D}_{k+1} \matr{W}_k^T } 
+  = \norm{ \frac{\partial C}{\partial h_T}} \prod_{k=t}^{T-1} \norm{\matr{D}_{k+1}} .
+\label{bound}
 \end{equation}
 
-Since $\matr{D}_k$ is diagonal, then $\norm{\matr{D}_k} = \max_{j=1, ..., n} |\sigma'(h_k^{(j)})|$, with $h_k^{(j)}$ the $j$-th unit of the $k$-th hidden layer.
+Since $\matr{D}_k$ is diagonal, $\norm{\matr{D}_k} = \max_{j=1, ..., n} |\sigma'(z_k^{(j)})|$,
+with $z_k^{(j)}$ the $j$-th pre-activation of the $k$-th hidden layer.
+If the absolute value of the derivative $\sigma'$ can take some value $\tau > 1$, then 
+this bound is useless, since $\norm{\frac{\partial C}{\partial h_t}} 
+\leq \norm{\frac{\partial C}{\partial h_T}} \tau^{T-t}$ which grows exponentially 
+in $T$. We therefore cannot effectively bound $\frac{\partial C}{\partial h_t}$ 
+for deep networks, resulting potentially in exploding gradients.
 
-If the absolute value of the derivative $\sigma'$ can be some number $\lambda > 1$, then this bound is useless, because it results on $\norm{\frac{\partial C}{\partial h_t}} \leq \norm{\frac{\partial C}{\partial h_T}} \lambda^{T-t}$ which grows {\it{exponentially}} with $T-t$. This means that we cannot effectively bound $\frac{\partial C}{\partial h_t}$ for deep networks, potentially resulting in {\it{exploding}} gradients.
-
-Even worse would be the case where $|\sigma'| < \lambda < 1$, because we would be proving that $\frac{\partial C}{\partial h_t}$ goes exponentially to 0, resulting in certain vanishing gradients. With this argument, the rectified linear unit (ReLU) \citep{Glorot2011} \citep{Nair2010} nonlinearity arises naturally. Unless all the activations are killed at one layer (which has never been reported), the maximum entry of $\matr{D}_k$ will be 1, leading to $\norm{\matr{D}_k} = 1$ for all layers $k$. With this, we effectively prove that
+In the case $|\sigma'| < \tau < 1$, equation \ref{bound} proves that 
+that $\frac{\partial C}{\partial h_t}$ tends to 0 exponentially fast as $T$ grows, 
+resulting in guaranteed vanishing gradients. 
+This argument makes the rectified linear unit (ReLU) nonlinearity an attractive choice
+\citep{Glorot2011, Nair2010}. Unless all the activations are killed at one layer, 
+the maximum entry of $\matr{D}_k$ is 1, resulting in
+$\norm{\matr{D}_k} = 1$ for all layers $k$. With ReLU nonlinearities, we thus have
 \begin{equation}
-  \norm{\frac{\partial C}{\partial h_t}} \leq \norm{ \frac{\partial C}{\partial h_T}} \prod_{k=t}^{T-1} \norm{\matr{D}_{k+1}} = \norm{\frac{\partial C}{\partial h_T}}
+  \norm{\frac{\partial C}{\partial h_t}} \leq \norm{ \frac{\partial C}{\partial h_T}} 
+  \prod_{k=t}^{T-1} \norm{\matr{D}_{k+1}} = \norm{\frac{\partial C}{\partial h_T}}
+\label{bound2}
 \end{equation}
 
-What is most important is the fact that this result is independent from the deep of the network or $T-t$. For the case of recurrent networks, it's easy to show that this results on the fact that $\frac{ \partial C}{\partial \theta}$ can grow at most {\it{additively}} instead of exploding {\it{multiplicatively}}. Among other things, this implies that the use of gradient clipping \citep{Pascanu2013} is no longer required.
+Most notably, this result holds for a network of arbitrary depth. 
+As a consequence of equation \ref{bound2} and under mild conditions, we can show that
+for a recurrent neural network with an orthogonal hidden to hidden weight matrix, 
+parameter gradients grow at most quadratically with depth as opposed to exponentially
+{\color{red}(see Appendix)}. This property makes engineering tricks like gradient clipping no longer
+necessary \citep{Pascanu2013}.
 
-To the best of our knowledge, this is the first time a deep neural network has been mathematically proven to have no exploding gradients.
+To the best of our knowledge, this analysis is a novel contribution and the first time a 
+neural network architecture has been mathematically proven to avoid exploding gradients. 
+
+In this paper, we explore the use of orthogonal matrices in recurrent neural networks. 
+Section 2 discusses the difficulties of parameterizing real valued orthogonal matrices and how
+they are easily alleviated by moving to the \textit{complex} domain. 
+A complex valued, norm preserving matrix,
+$\matr{U}$, is called a \textit{unitary} matrix and is such that 
+$\matr{U}^* \matr{U} = \matr{U} \matr{U}^* = \matr{I}$, where $\matr{U}^*$ is the conjugate transpose
+of $\matr{U}$.   
+
+We discuss a novel approach to constructing expressive unitary matrices as the composition of simple
+unitary matrices which require at most $\mathcal{O}(n \log n)$ computation and $\mathcal{O}(n)$ memory,
+unlike general matrices which require $\mathcal{O}(n^2)$ computation and memory. {\color{red} discuss how 
+others have tried to work with complex valued representations with little success... }
+
+Whilst our model uses complex valued matrices and parameters, all implementaion and optimization is 
+possible with real numbers. This along with other implementation details are discussed in Section 3.
+The potential of the developed model for learning long term dependencies with relatively few parameters is
+explored in Section 4.
+
+
 
 %Notes: 
 %
@@ -112,93 +174,186 @@ To the best of our knowledge, this is the first time a deep neural network has b
 
 \section{Unitary Evolution RNNs}
 
-The most important feature of unitary and orthogonal matrices for our purpose is that they have eigenvalues $\lambda_j$ with absolute value 1 (we therefore write $\lambda_j = e^{i w_j}$ with $w_j \in \RR$). A naive method to learn a unitary matrix would be to fix a basis of eigenvectors $\matr{V} \in \mathbb{C}^{n \times n}$ and set
-
-$$ \matr{W} = \matr{V} \matr{D} \matr{V}^{*} $$
-
-where $\matr{D}$ is a diagonal such that $\matr{D}_{j,j} = e^{i w_j}$. By restricting the choice of $\matr{V}$ and tying the learned $w_j$s to create conjugates, $\matr{W}$ can be restricted to be a real matrix. This is evident from the following lemma:
+The most important feature of unitary and orthogonal matrices for our purpose is that they have eigenvalues
+$\lambda_j$ with absolute value 1. The following lemma, proved in \cite{linalgbook}, may shed light on a 
+method by which we may construct orthogonal matrices.
 
 \begin{lemma}
-  A complex square matrix $\matr{W}$ is unitary if and only if it has an eigendecomposition of the form $\matr{W} = \matr{V} \matr{D} \matr{V}^*$. Here, $\matr{V}, \matr{D} \in \mathbb{C}^{n \times n}$ are complex matrices, where $\matr{V}$ is unitary, and $\matr{D}$ is a diagonal such that $|\matr{D}_{j,j}|=1$. Furthermore, $\matr{W}$ is a real orthogonal matrix if and only if for every eigenvalue $\matr{D}_{j,j} = \lambda_j$ with eigenvector $v_j$, there is also an eigenvalue $\lambda_k = \overline{\lambda_j}$ with corresponding eigenvector $v_k = \overline{v_j}$
+  A complex square matrix $\matr{W}$ is unitary if and only if it has an eigendecomposition of the form
+  $\matr{W} = \matr{V} \matr{D} \matr{V}^*$. Here, $\matr{V}, \matr{D} \in \mathbb{C}^{n \times n}$ are
+  complex matrices, where $\matr{V}$ is unitary, and $\matr{D}$ is a diagonal such that $|\matr{D}_{j,j}|=1$. 
+  Furthermore, $\matr{W}$ is a real orthogonal matrix if and only if for every eigenvalue $\matr{D}_{j,j} 
+  = \lambda_j$ with eigenvector $v_j$, there is also an eigenvalue $\lambda_k = \overline{\lambda_j}$ with 
+  corresponding eigenvector $v_k = \overline{v_j}$ .
+\label{lemma}
 \end{lemma}
-\begin{proof}
-  See \cite{linalgbook}
-\end{proof}
 
-To achieve a real orthogonal matrix $\matr{W}$ we require a fixed unitary matrix $\matr{V}$, whose columns come in complex conjugate pairs $v_k = \overline{v_j}$. Similarly, we should also tie $w_k=-w_j$ in order to achieve $e^{i w_j} = \overline{e^{i w_k}}$. $\matr{W}$ is subsequently real and orthogonal by the lemma. Since $w_j$ are real numbers and if the cost is differentiable with respect to them, we can learn these weights by gradient descent. 
+Writing $\lambda_j = e^{i w_j}$ with $w_j \in \RR$, a naive method to learn a unitary matrix would be to
+fix a basis of eigenvectors $\matr{V} \in \mathbb{C}^{n \times n}$ and set
+\begin{equation} \matr{W} = \matr{V} \matr{D} \matr{V}^{*} , \end{equation}
 
-However, this approach has one major problem. Mainly, the memory needed to store $\matr{V}$ is $\mathcal{O}\left(n^2\right)$. Also, if $u$ is a vector, calculating $\matr{V}u$ has cost $\mathcal{O}\left( n^2 \right)$. This would lead to a cost of $\mathcal{O} \left( n^2 \right)$ for forward and backpropagation. However, we are only learning $\mathcal{O}(n)$ parameters, which is very inefficient.
+where $\matr{D}$ is a diagonal such that $\matr{D}_{j,j} = \lambda_j$. 
 
-If we didn't have $\matr{V}$ then we would just be learning a diagonal matrix, which likely isn't sufficient. However, since the product of unitary matrices is itself unitary, we can construct $\matr{W}$ by combining several simple structured unitary matrices that are efficient to store and to operate with. \cite{dfc} do a similar construction to reduce the amount of parameters by more than an order of magnitude in an industrial sized network, while maintaining performance. This, combined with earlier work by \cite{fastfood} suggests that it is possible to create very expressive matrices with relatively little cost. The building blocks we use are as follows:
+Lemma \ref{lemma} informs us how to construct a real orthogonal matrix, $\matr{W}$.
+We must (i) ensure the columns of $\matr{V}$ come in complex conjugate pairs, $v_k = \overline{v_j}$, and
+(ii) tie weights $w_k=-w_j$ in order to achieve $e^{i w_j} = \overline{e^{i w_k}}$. 
+Most neural network objective functions are differentiable with respect to the weight matrices,
+and consequently $w_j$ may be learned by gradient descent. 
+
+Unfortunately the above approach has undesirable properties. 
+Fixing $\matr{V}$ and learning $w$ requires $\mathcal{O}\left(n^2\right)$ memory, 
+which is unacceptable given that the number of learned parameters is $\mathcal{O}(n)$. 
+Further note that calculating $\matr{V} u$ for an arbitrary vector $u$ 
+requires $\mathcal{O}(n^2)$ computation. 
+Setting $\matr{V}$ to the identity would satisfy the conditions of the lemma, whilst reducing  
+memory and computation requirements to $\mathcal{O}(n)$, however, $\matr{W}$ would remain diagonal, 
+and have poor representation capacity.
+
+We propose an alternative strategy to parameterize unitary matrices. 
+Since the product of unitary matrices is itself a unitary matrix, our idea involves
+composing several simple, parameteric, unitary matrices to construct a single, expressive unitary matrix.
+The four types of unitary building blocks considered are 
 
 \begin{itemize}
-  \item $\matr{D}$ is a diagonal matrix with entries $\matr{D}_{j,j} = e^{i w_j}$ Since $\matr{D}$ is a diagonal with that have absolute value 1, it is clearly unitary. The weights $w_j \in \RR$ are going to be learned by gradient descent.
-  \item $\matr{R} = \matr{I} - 2 \frac{v v^*}{\|v\|^2}$ is a reflection matrix by the complex vector $v \in \mathbb{C}^n$. This matrix is also learned, by doing gradient descent on the real and imaginary parts of $v$. The fact that this matrix is unitary is left as an exercise to the reader.
-  \item $\matr{\Pi}$ a fixed random permutation. Since the transpose is the inverse permutation, the unitary condition follows.
-  \item $\mathcal{F}$ and $\mathcal{F}^{-1}$ the Fourier and inverse Fourier transforms, which have long been showed to be unitary.
+  \item $\matr{D}$, a diagonal matrix with $\matr{D}_{j,j} = e^{i w_j}$, with parameters $w_j \in \RR$,
+  \item $\matr{R} = \matr{I} - 2 \frac{v v^*}{\|v\|^2}$, a reflection matrix in the complex vector 
+  $v \in \mathbb{C}^n$, 
+  \item $\matr{\Pi}$, a fixed random index permutation matrix, and
+  \item $\mathcal{F}$ and $\mathcal{F}^{-1}$, the Fourier and inverse Fourier transforms.
 \end{itemize}
 
-For the case of $\matr{D}, \matr{R}, \matr{\Pi}$, storing each of this matrices has cost $\mathcal{O}(n)$. For the diagonal, we only store the weights $w_j$, for the reflection only the vector $v$ and for the permutation we save it as an array. Multiplying any of this matrices with a vector is also $\mathcal{O}(n)$. The Fourier transforms don't need to be stored, and multiplying a vector with them can be done in $\mathcal{O}(n \log n)$ via the Fast Fourier Transform. This means that the final cost of doing forward and backpropagation through the weight matrix is $\mathcal{O} (n \log n)$, with memory cost $\mathcal{O} (n)$ with $\mathcal{O}(n)$ parameters and hidden units.
+Appealingly, $\matr{D}$, $\matr{R}$ and $\matr{\Pi}$ all permit $\mathcal{O}(n)$ storage and 
+$\mathcal{O}(n)$ computation for matrix vector products. $\mathcal{F}$ and $\mathcal{F}^{-1}$
+require no storage and $\mathcal{O}(n \log n)$ matrix vector multiplication using the Fast Fourier
+Transform algorithm. A major advantage of composing unitary matrices of the form listed above, is 
+that the number of parameters, memory and computational cost increase almost linearly in the size
+of the hidden layer. With such a weight matrix, immensely large hidden layers are feasible to train, 
+whilst being impossible in traditional neural networks. 
+ 
+With this in mind, we choose to conisder recurrent neural networks with unitary hidden to hidden
+weight matrices in this work. Our claim is that the ability to have large hidden layers where hidden 
+states norms are preserved provides a powerful tool for modelling long term dependencies in sequence data. 
+Early work by \cite{Yoshua94} suggests that having a large memory may be crucial for solving 
+difficult tasks involving long ranging dependencies.
 
-One major advantage of this parameterization, is that the number of parameters, memory and computational cost increase linearly as a function of the hidden layer size. Therefore, we can potentially have inmense hidden layers, while this would be impossible in traditional RNNs. Especially for modelling long term dependencies, this is not a minor feature, because it increases the amount of information that can be carried from one time to another. Early work by \cite{Yoshua94} shows that having a big memory may be a crucial aspect of solving the difficulties in modeling long-term dependencies.
+We call any RNN architecture which uses a unitary hidden to hidden matrix a \textit{unitary evolution RNN}
+(uRNN). After experimenting with several structures, we settled on the following composition
 
-We call any architecture that uses a unitary hidden to hidden matrix a unitary evolution RNN (uRNN). After trying different combinations, the uRNN we settled on has the weight matrix
+\begin{equation} \matr{W} = \matr{D}_3 \matr{R}_2 \mathcal{F}^{-1} \matr{D}_2 \matr{\Pi} \matr{R}_1 \mathcal{F} \matr{D}_1 .\end{equation}
 
-$$ \matr{W} = \matr{D_3} \matr{R_2} \mathcal{F}^{-1} \matr{D}_2 \matr{\Pi} \matr{R_1} \mathcal{F} \matr{D}_1 $$
+Whilst each but the permutation matrix is complex, we parameterize and represent them with real numbers
+for implementation purposes. When the final cost is real and differentiable, we may perform gradient descent 
+optimization to learn the parameters.
+\cite{dfc} construct a real valued, non-orthogonal matrix using a similar parameterization with the motivation
+of parameter reduction by an order of magnitude on an industrial sized network. This combined with earlier
+work \cite{fastfood} suggests that it is possible to create highly expressive matrices by composing simple
+matrices with few parameters.
 
-The main issue of most of this matrices (except the permutation) is that they are complex. However, they are parameterized with real weights, so if the final cost is real and is differentiable with respect to them, we can do gradient descent nonetheless. In the following section we specify the complete architecture of the network, and explain how the potential difficulties of using complex hidden units can be easilly bypassed.
+In the following section, we explain details on how to implement our model and illustrate how we bypass the
+potential difficulties of working in the complex domain.
 
 \section{Architecture details}
 
-It is not enough to say how to parameterize a unitary weight matrix and get done with it. In this section, we describe the rest of the architecture, including the nonlinearity we used, how we go from real input to complex hidden units and from these units to the output.
+In this section, we describe the nonlinearity we used, how we incorporate real valued inputs 
+with complex valued hidden units and map from complex hidden states to real outputs. 
+{\color{red}Finally, we display some implementation considerations, including memory optimization on GPUs}.
 
 \subsection{Complex hidden units}
 
-All the hidden units are represented internally with real numbers, as imaginary and complex parts. This way, it is far more easy to code, and we completely avoid the lack of support for complex numbers by most deep learning frameworks. One of the most important examples is when multiplying the weight matrix $\matr{W} = \matr{A} + i \matr{B}$ by the complex hidden vector $h = x + i y$ In fact, it is easy to show that $ \matr{W}h = (\matr{A}x - \matr{B}y) + i (\matr{A}y + \matr{B}x) $, which leads to
+Our implementation represents all complex numbers using real values in terms of their
+real and imaginary parts. Under this framework, we sidestep the lack of support for complex numbers 
+by most deep learning frameworks. Consider multiplying the complex weight matrix 
+$\matr{W} = \matr{A} + i \matr{B}$ by the complex hidden vector $h = x + i y$, where
+$\matr{A}, \matr{B}, x, y$ are real.
+It is trivially true that $\matr{W}h = (\matr{A}x - \matr{B}y) + i (\matr{A}y + \matr{B}x)$.
+When we represent $v \in \CC^n$ as {\color{red} (this is not pretty)} $\big(Re(v)^\top, Im(v)^\top \big)^\top \in \RR^{2n}$ , we
+compute complex matrix vector products with real numbers as follows
 
+\begin{equation} \begin{pmatrix} Re(\matr{W}h) \\ Im(\matr{W}h) \end{pmatrix}  
+= \begin{pmatrix} \matr{A} & -\matr{B} \\ \matr{B} & \ \ \ 
+\matr{A} \end{pmatrix} \begin{pmatrix} Re(h) \\ Im(h) \end{pmatrix} .
+\end{equation}
 
-$$ \begin{pmatrix} Re(\matr{W}h) \\ Im(\matr{W}h) \end{pmatrix}  = \begin{pmatrix} \matr{A} & -\matr{B} \\ \matr{B} & \ \ \ \matr{A} \end{pmatrix} \begin{pmatrix} Re(h) \\ Im(h) \end{pmatrix}$$
-
-More generally, let $f: \CC^n \rightarrow \CC^n$ be any complex function and $z = x + i y$ any complex vector, it can be decompposed as $ f(z) = u(x, y) + i v(x, y) $ where $u,v$ are the real and imaginary parts of $f$. Therefore, we can consider the mapping as $f: \RR^{2n}  \rightarrow \RR^{2n}$, and implement everything with real numbers. Doing this, any Deep Learning framework with automatic differentiation like Theano \citep{Fred2010} is able to take care of computing the derivatives efficiently.
+More generally, let $f: \CC^n \rightarrow \CC^n$ be any complex function and $z = x + i y$ 
+any complex vector. We may write $ f(z) = \alpha(x, y) + i \beta(x, y) $ where 
+$\alpha, \beta : \RR^n \rightarrow \RR^n$. 
+This allows us to implement everything using real valued operations, compatible with any
+any deep learning framework with automatic differentiation such as Theano \citep{Fred2010}.
 
 \subsection{Input to hidden and the nonlinearity}
 
-As is the case with most recurrent networks, our uRNN follows the same hidden to hidden mapping as equation (1) with $\matr{V}_t = \matr{V}$ and $\matr{W}_t = \matr{W}$. For the input matrix we have $\matr{V} \in \CC^{n \times n}$, and it's real and imaginary. The initial hidden state $h_0 \in \CC^n$ is learned this way as well.
+As is the case with most recurrent networks, our uRNN follows the same hidden to hidden mapping as 
+equations \ref{linoutput} and \ref{nonlinoutput} with $\matr{V}_t = \matr{V}$ and $\matr{W}_t = \matr{W}$. 
+Denote the size of the complex valued hidden states as $n_h$.
+The input to hidden matrix is complex valued, $\matr{V} \in \CC^{n_h \times n_h}$. 
+We learn the initial hidden state $h_0 \in \CC^{n_h}$ as a parameter of the model also.
 
-Sadly, it is not as easy to choose a good nonlinearity. As discussed in section 1, using a ReLU is the natural choice when having an orthogonal or unitary RNN. Previous work on complex RNNs usually have applied a nonlinearity on both the real and imaginary parts \ref{Old CRNN papers}. However, as we will show later, this usually results on poor performance. The interpetation of why this happens is that applying a nonlinearity on the real and imaginary parts brutally changes the phase of a complex number. Since unitary matrices can be interpreted as multiplying by a phase in each eigenvector direction, this phase might be important when recovering information about past memories. Therefore, we employ a variation of the ReLU that we deem modReLU, that is applied only on the absolute value, and is defined as follows.
+Choosing an appropriate nonlinearity is not trivial in the complex domain.
+As discussed in the introduction, using a ReLU is a natural choice in combination with a norm preserving
+weight matrix. {\color{red}Previous work on neural networks with complex valued} hidden states 
+have applied ReLU nonlinearities on the real and imaginary parts separately \ref{Old CRNN papers}.
+However, we found that such a nonlinearity {\color{red}tended to lead to} poor performance.
+Our intuition as to why applying separate ReLU nonlinearities to the real 
+and imaginary parts performed badly is that such an operation brutally impacts the 
+phase of a complex number.
 
-$$ \sigma: \CC \rightarrow \CC $$
-
-$$ \sigma (z) = 
+We speculate that maintaining the phase of hidden states may be important for storing information 
+across a large number of time steps, and our experimentation supported this claim.
+A variation of the ReLU that we deem modReLU, is what we 
+finally chose as our nonlinearity. The modReLU is a pointwise nonlinearity,  
+$\sigma_\mathrm{modReLU} (z) : \CC \rightarrow \CC$, which
+affects only the absolute value of a complex number, and we define it as 
+\begin{equation} \sigma_\mathrm{modReLU} (z) = 
 \left\{
   \begin{array}{ll}
     (|z|+b|) \frac{z}{|z|}  & \mbox{if } |z| + b \geq 0 \\
     0 & \mbox{if } |z| + b < 0
   \end{array}
 \right.
-$$
+\end{equation}
 
-
-Where $b \in \RR$ is the bias of the nonlinearity, which is learned for each complex unit. It is important to note that $\sigma(z) = \text{ReLU}(|z| + b) \frac{z}{|z|}$
+where $b \in \RR$ is a bias parameter of the nonlinearity. For a $n_h$ dimensional hidden space
+we learn $n_h$ nonlinearity bias parameters, one per dimension. 
+Note that the modReLU is similar to the ReLU in spirit, in fact more concretely
+$\sigma_\mathrm{modReLU}(z) = \sigma_\mathrm{ReLU}(|z| + b) \frac{z}{|z|}$. 
 
 \subsection{Hidden to output}
 
-For the output we have a matrix $\matr{U} \in \RR^{2n_h \times n_o}$ where $n_h$ is the hidden layer size and $n_o$ is the output size. The output is calculated as
+To map hidden states to output, we define a matrix $\matr{U} \in \RR^{2n_h \times n_o}$, 
+where $n_o$ is the output dimension. We calculate a linear output as
+\begin{equation} o_t = \matr{U} \begin{pmatrix} Re(h_t) \\ Im(h_t) \end{pmatrix} + b_o , \end{equation}
 
-$$ o_t = \matr{U} \begin{pmatrix} Re(h_t) \\ Im(h_t) \end{pmatrix} + b_o $$
+where $b_o \in \RR^{n_o}$ is the output bias. 
+The linear output is real valued ($o_t \in \RR^{n_h}$) and can be used for prediction and loss function 
+calculation akin to typical neural networks (e.g. it may be passed through a softmax which is used for 
+cross entropy calculation for classification tasks).
 
-with $b_o \in \RR^{n_o}$ the output bias. Since this output is real, we can now use it to compare the cost in the classical way with any loss function (e.g. plug it into a softmax for classification).
+
 \subsection{Initialization}
 
-We experimented with several initialization strategies. However, because of the stability of the network, initialization doesn't seem to be extremely important. However, the following ones did seem to make optimization marginally easier, and give a few insights on the way the netwrok works.
+Due to the stability of the norm preserving operations of our network, we found that performance was
+not very sensitive to initialization of parameters.
+For full disclosure and reproducibility, we explain our initialization strategy for each parameter below.
 
 \begin{itemize}
-  \item We initialize $\matr{V}$ and $\matr{U}$ (the input and output matrices) as in \cite{Glorotinit} with a uniform $\mathcal{U}\left[-\frac{\sqrt{6}}{\sqrt{n_{in}+ n_{out}}}, \frac{\sqrt{6}}{\sqrt{n_{in}+ n_{out}}}\right]$.
-  \item The biases are initialized to 0. This way at the beginning, the nonlinearity is silent. This is because the input of the ReLU is always positive (it is an absolute value). Therefore, we start with a linear unitary mapping with additive contributions from the input, which is controled and seems to help early optimization \citep{Quoc2015}.
-  \item The reflection vectors for $\matr{R}_1$ and $\matr{R}_2$ are initialized coordinate-wise from a uniform $\mathcal{U}[-1, 1]$. It's important to remark the fact that since the reflection matrix is independent from the scale of the vector, so any centered uniform will result in the same network.
-  \item The diagonal weights $w_j$ are sampled from a uniform $\mathcal{U}[-\pi, \pi]$. This way $\matr{D}_{j,j} = e^{i w_j}$ is sampled uniformly from the unit circle.
-  \item We initialize $h_0$ with a uniform $\mathcal{U}\left[-\sqrt{\frac{3}{2n_h}}, \sqrt{\frac{3}{2n_h}} \right]$. This way $\mathbb{E}\left[\|h_0\|^2\right] = 1$. Since the norm of the hidden units is roughly preserved because of the unitary weight matrix and inputs are usually whitened to have norm 1, we have hidden states and inputs on the same order of magnitude, which seems to help optimization \ref{batchnorm?}.
+  \item We initialize $\matr{V}$ and $\matr{U}$ (the input and output matrices) as in \cite{Glorotinit},
+  with weights sampled independently from uniforms, $\mathcal{U}\left[-\frac{\sqrt{6}}{\sqrt{n_{in}+ n_{out}}}, \frac{\sqrt{6}}{\sqrt{n_{in}+ n_{out}}}\right]$.
+  \item The biases, $b$ and $b_o$ are initialized to 0. The consequence of this is that at initialization, 
+    the network is linear with unitary weights, which seems to help early optimization \citep{Saxe2014}.
+  \item The reflection vectors for $\matr{R}_1$ and $\matr{R}_2$ are initialized coordinate-wise from a 
+  uniform $\mathcal{U}[-1, 1]$. Note that the reflection matrices are invariant to scalar multiplication 
+  of the parameter vector, hence the width of the uniform initialization is unimportant.
+  \item The diagonal weights for $\matr{D}_1, \matr{D}_2$ and $\matr{D}_3$ are sampled 
+  from a uniform, $\mathcal{U}[-\pi, \pi]$. This ensures that the diagonal entries $\matr{D}_{j,j}$
+  are sampled uniformly over the complex unit circle.
+  \item We initialize $h_0$ with a uniform, 
+  $\mathcal{U}\left[-\sqrt{\frac{3}{2n_h}}, \sqrt{\frac{3}{2n_h}} \right]$, 
+  which results in $\mathbb{E}\left[\|h_0\|^2\right] = 1$. Since the norm of the hidden units are roughly 
+  preserved through unitary evolution and inputs are typically whitened to have norm 1, 
+  we have hidden states, inputs and linear outputs of the same order of magnitude, which seems to
+  help optimization \ref{batchnorm?}.
 \end{itemize}
+
 
 \section{Experiments}
 In this section we show the performance of our uRNN on several tasks related to learning long-term dependencies. These problems were especially created to be pathologically hard, and have been used as benchmarks for testing the capacity of a model to capture long-term memory \citep{LSTM} \citep{HF} \citep{Quoc2015}.
@@ -252,12 +407,12 @@ In this problem, the input consists of two sequences of length $T$. The first se
   \label{ fig7} 
   \begin{minipage}[b]{0.5\linewidth}
     \centering
-    \includegraphics[scale=0.25]{figures/memory_100.jpeg}
+    \includegraphics[scale=0.25]{figures/adding_200.jpeg}
     \vspace{4ex}
   \end{minipage}%%
   \begin{minipage}[b]{0.5\linewidth}
     \centering
-    \includegraphics[scale=0.25]{figures/memory_200.jpeg}
+    \includegraphics[scale=0.25]{figures/adding_400.jpeg}
     \vspace{4ex}
     \end{minipage} 
   \begin{minipage}[b]{0.5\linewidth}
