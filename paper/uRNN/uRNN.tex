@@ -13,15 +13,15 @@
 
 \author{Martin Arjovsky \thanks{Indicates first authors. Ordering determined by coin flip.} \\
 Universidad de Buenos Aires\\
-\texttt{\{marjovsky\}@dc.uba.ar} \\
+\texttt{marjovsky@dc.uba.ar} \\
 \And
 Amar Shah$^*$ \\
 Cambridge University \\
-\texttt{\{as793\}@cam.ac.uk} \\
+\texttt{as793@cam.ac.uk} \\
 \AND
 Yoshua Bengio \\
-Universite de Montr\'eal, CIFAR Senior Fellow\\
-\texttt{\{yoshua.bengio\}@gmail.com} \\
+Universit\'e de Montr\'eal, CIFAR Senior Fellow\\
+\texttt{yoshua.bengio@gmail.com} \\
 }
 
 % The \author macro works with any number of authors. There are two commands
@@ -78,7 +78,7 @@ then it's easy to show by the chain rule
 
 Where $\matr{D}_{k+1} = diag(\sigma'(z_{k+1}))$ is the Jacobian matrix of the nonlinearity. Since the nonlinearity is evaluated pointwise, this Jacobian matrix is clearly diagonal.
 
-In the following we will use the norm of matrix to mean the spectral radius (i. e. operator 2-norm) and the norm of a vector to mean $L_2$-norm. It's good to remember that with these norms, for any matrices $\matr{A}, \matr{B}$ and vector $v$ we have by definition $\norm{\matr{A}v} \leq \norm{\matr{A}} \norm{v}$ and $\norm{\matr{A}\matr{B}} \leq \norm{\matr{A}} \norm{\matr{B}}$.
+In the following we will use the norm of a matrix to mean the spectral radius (i. e. operator 2-norm) and the norm of a vector to mean $L_2$-norm. It's good to remember that with these norms, for any matrices $\matr{A}, \matr{B}$ and vector $v$ we have by definition $\norm{\matr{A}v} \leq \norm{\matr{A}} \norm{v}$ and $\norm{\matr{A}\matr{B}} \leq \norm{\matr{A}} \norm{\matr{B}}$.
 
 If the weight matrices $\matr{W}_k$ are norm preserving (i.e. orthogonal or unitary), then we can {\bf{prove}}
 \begin{equation}
@@ -150,7 +150,7 @@ The main issue of most of this matrices (except the permutation) is that they ar
 
 \section{Architecture details}
 
-It is not enough to say how to parameterize a unitary weight matrix and get done with it. In this section, we describe the rest of the architecture, including the nonlinearity we used, how we go from real input to complex hidden units and from these units to the output. Finally, we display some implementation considerations, including memory optimization on GPUs.
+It is not enough to say how to parameterize a unitary weight matrix and get done with it. In this section, we describe the rest of the architecture, including the nonlinearity we used, how we go from real input to complex hidden units and from these units to the output.
 
 \subsection{Complex hidden units}
 
@@ -200,9 +200,59 @@ We experimented with several initialization strategies. However, because of the 
   \item We initialize $h_0$ with a uniform $\mathcal{U}\left[-\sqrt{\frac{3}{2n_h}}, \sqrt{\frac{3}{2n_h}} \right]$. This way $\mathbb{E}\left[\|h_0\|^2\right] = 1$. Since the norm of the hidden units is roughly preserved because of the unitary weight matrix and inputs are usually whitened to have norm 1, we have hidden states and inputs on the same order of magnitude, which seems to help optimization \ref{batchnorm?}.
 \end{itemize}
 
+\section{Experiments}
+In this section we show the performance of our uRRN on several tasks related to learning long-term dependencies. These problems were especially created to be pathologically hard, and have been used as benchmarks for testing the capacity of a model to capture long-term memory \citep{LSTM} \citep{HF} \citep{Quoc2015}.
+
+\subsection{Copying memory problem}
+Recurrent networks have major issues when the outputs they try to model depend on inputs that were sent a long time ago \citep{Yoshua94} \citep{Pascanu2013}. Therefore, it is a natural task to ask a recurrent network to reproduce exactly an input it has seen long ago.
+
+The task starts with the network being fed 10 symbols choosen uniformly at random between $\{a_i\}_{i=0}^7$ and represent the sequence to be remembered. Then we give the network another symbol $a_8$ repeated for a very long time. We give this symbol $a_8$ the name `blank'. After the repeated blanks, the network reads the symbol $a_9$, followed again by blanks. This is the precise moment when the network is supposed to start outputing the 10 original symbols. At any other time, the network should ouput blanks.
+If the entire input sequence has length $T$, the effective time lag for which our network needs to remember the symbols is $T-10$. When $T$ is long enough, this problem becomes violently hard for current approaches.
+
+A baseline can be established by realizing what the best strategy is without remembering any of the 10-digit input. This strategy (which we deem memory-less) would be to predict a blank at every position except for the ten outputs after the delimiter $a_9$, and in those position uniformly at random from $\{a_i\}_{i=0}^7$. Since we are using cross-entropy, if $o_t$ is the probability that the network outputs for the correct answer at time $t$ then the cost of this strategy is exactly
+
+\begin{equation}
+  -\frac{\sum_{t=1}^{T+20} \log (o_t)}{T+20} = - \frac{\sum_{t=T+11}^{T+20} \log \left( \frac{1}{8} \right)}{T+20} = \frac{10 \log(8)}{T+20} 
+\end{equation}
+
+\begin{figure}[ht] 
+  \label{ fig7} 
+  \begin{minipage}[b]{0.5\linewidth}
+    \centering
+    \includegraphics[scale=0.25]{figures/memory_100.jpeg}
+    \vspace{4ex}
+  \end{minipage}%%
+  \begin{minipage}[b]{0.5\linewidth}
+    \centering
+    \includegraphics[scale=0.25]{figures/memory_200.jpeg}
+    \vspace{4ex}
+    \end{minipage} 
+  \begin{minipage}[b]{0.5\linewidth}
+    \centering
+    \includegraphics[scale=0.25]{figures/memory_300.jpeg}
+    \vspace{4ex}
+    \end{minipage}%% 
+  \begin{minipage}[b]{0.5\linewidth}
+    \centering
+    \includegraphics[scale=0.25]{figures/memory_500.jpeg}
+    \vspace{4ex}
+  \end{minipage} 
+\end{figure}
+
+In figure 1, we see that except in the simplest case both the RNN with tanh and more surprisingly the LSTMs get almost exactly the same cost as the memoryless strategy. This behaviour is consistent with the results of \cite{NTM}, in which poor performance is evidenced by LSTMs for a very similar problem.
+
+What is very interesting is not only the fact that the uRNN displays perfect performance in very little iterations, but how qualitatively different the results are from the LSTM. One of the most noticeable features is that it goes from initialization to almost 0 cost without staying at the baseline. In contrast, for the first plot, the LSTM stays on the baseline for a while, before starting to improve very slowly. This evidences the fact that the uRNN is a very different model than both LSTMs and classical RNNs, potentially achieving very different internal representations.
+
+\subsection{Adding Problem}
+LSTM
+
+\subsection{Pixel-by-pixel MNIST}
+IRRN
+
+\subsection{Optimization experiments}
+Ian Good
+
 \bibliography{uRNN}
 \bibliographystyle{uRNN}
 
 \end{document}
-
-
