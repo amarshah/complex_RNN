@@ -537,7 +537,7 @@ On this experiment, we feed the neural network the pixels of MNIST \citep{MNIST}
   \caption{Pixel-by-pixel MNIST}
 \end{figure}
 
-The architectures used here are the same as in the adding problem. 128 units and a little more than 60K parameters for the LSTM, 512 units and a little less than 9K parameters for the uRNN. Both models perform remarcably well on both tasks. LSTM does better on the first task, reaching 98\% test accurracy and 95\% for the uRNN. On the other hand, on the permuted pixel-by-pixel task, the uRNN dominates with 91.4\% of accuracy in contrast to the 88\% of the LSTM, despite having less than one sixth the amount of parameters. This result is also state of the art on this task, compared to \cite{Quoc2015} IRNN, which reaches close to 82\% with more parameters.
+The architectures used here are the same as in the adding problem. 128 units and a little more than 65K parameters for the LSTM, 512 units and a little more than 16K parameters for the uRNN. Both models perform remarcably well on both tasks. LSTM does better on the first task, reaching 98\% test accurracy and 95\% for the uRNN. On the other hand, on the permuted pixel-by-pixel task, the uRNN dominates with 91.4\% of accuracy in contrast to the 88\% of the LSTM, despite having less than one fourth the amount of parameters. This result is also state of the art on this task, compared to \cite{Quoc2015} IRNN, which reaches close to 82\%.
 
 Also very interesting to show is the fact that the uRNN reaches convergence with less than 20 thousand iterations, while it takes the LSTM from 5 to 10 times as many to finish learning.
 
