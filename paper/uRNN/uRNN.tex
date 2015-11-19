@@ -428,7 +428,7 @@ to $\frac{10 \log(8) }{T+20} $.
 
 \begin{figure}[t!]
   \centering
-  \label{fig7} 
+  \label{fig1} 
   \begin{minipage}[b]{0.5\linewidth}
     %\centering
     \includegraphics[scale=0.25]{figures/memory_100.jpeg}
@@ -454,8 +454,7 @@ to $\frac{10 \log(8) }{T+20} $.
 
 We ran experiments where the RNN with tanh activations, IRNN and LSTM had hidden layers of size 32 and the
 uRNN had a hidden layer of size 128. This equates to roughly 1000 parameters for the RNN and IRNN, roughly 
-1900 parameters for the uRNN and roughly 4000 parameters for the LSTM. Note that the number of uRNN parameters
-is less than half of that of the LSTM.
+1900 parameters for the uRNN and roughly 4000 parameters for the LSTM and uRNN.
 
 In figure 1, we see that except in the simplest case both the RNN with tanh and more surprisingly 
 the LSTMs get almost exactly the same cost as the memoryless strategy. This behaviour is consistent 
@@ -473,7 +472,7 @@ In this problem, the input consists of two sequences of length $T$. The first se
 With some elemntary calculations, we can see that predicting 1 regardless of the input sequence gives in expectation 0.167 of error, so we use this as a baseline.
 
 \begin{figure}[ht] 
-  \label{ fig7} 
+  \label{ fig2} 
   \begin{minipage}[b]{0.5\linewidth}
     \centering
     \includegraphics[scale=0.25]{figures/memory_100.jpeg}
@@ -497,7 +496,7 @@ With some elemntary calculations, we can see that predicting 1 regardless of the
   \caption{Results of the adding problem for $T=100, 200, 400, 750$.}
 \end{figure}
 
-For this problem we ran the same models as before, with 128 hidden units on RNN with tanh, IRNN and LSTM, and 512 for the uRNN. This means that the RNN and IRNN have roughly 10K parameters, the LSTM about 40K, and the uRNN near 15K. We trained all models on batches of size 20 and 50, the best results are reported. The RNN with tanh activation was not shown for 750 so the differences between the LSTM and the uRNN curves are clearer, and the model achieved almost constant baseline as expected. 
+For this problem we ran the same models as before, with 128 hidden units on RNN with tanh, IRNN and LSTM, and 512 for the uRNN. The uRNN has almost 9K parameters, the RNN and IRNN have roughly 16K parameters, while the LSTM has about 60K of them. Note that the LSTM has more than 6 times the parameters than the uRNN. We trained all models on batches of size 20 and 50, the best results are reported. The RNN with tanh activation was not shown for 750 so the differences between the LSTM and the uRNN curves are clearer, and the model achieved almost constant baseline as expected. 
 
 We can see that up to $T=400$ both the LSTM and the uRNN learn models that go well below the baseline. In the case of sequences of size 750, both algorithms do quite well, with errors remarkably below the baseline, although not quite reaching 0. The uRNN achieves lower error, but it's curve is more noisy.
 
@@ -506,13 +505,35 @@ The RNN with tanh and IRNN weren't able to go below baseline on any of the exper
 {\color{red} Show that the LSTM learns to predict only the number for the last half on $T=750$. Plot the correct figure for $T=100$}
 
 \subsection{Pixel-by-pixel MNIST}
-IRNN
+
+On this experiment, we feed the neural network the pixels of MNIST \citep{MNIST} images in a sequence, and after this we ask it to recognize the digit. There are two variants of this task. The first one, we feed the digits in order (left to right and up to down). On the second one, we feed the digits in a random fixed permuted order. Since the digit displayed on the image depends on almost every single pixel, there are several very long-term dependencies involved.
+
+\begin{figure}[ht] 
+  \label{ fig3} 
+  \begin{minipage}[b]{0.5\linewidth}
+    \centering
+    \includegraphics[scale=0.25]{figures/mnist.jpeg}
+    \vspace{4ex}
+  \end{minipage}%%
+  \begin{minipage}[b]{0.5\linewidth}
+    \centering
+    \includegraphics[scale=0.25]{figures/mnist_perm.jpeg}
+    \vspace{4ex}
+  \end{minipage}
+  \caption{Pixel-by-pixel MNIST}
+\end{figure}
+
+The architectures used here are the same as in the adding problem. 128 units and a little more than 60K parameters for the LSTM, 512 units and a little less than 9K parameters for the uRNN. Both models perform remarcably well on both tasks. LSTM does better on the first task, reaching 98\% test accurracy and 95\% for the uRNN. On the other hand, on the permuted pixel-by-pixel task, the uRNN dominates with 91.4\% of accuracy in contrast to the 88\% of the LSTM, despite having less than one sixth the amount of parameters. This result is also state of the art on this task, compared to \cite{Quoc2015} IRNN, which reaches close to 82\% with more parameters.
+
+Also very interesting to show is the fact that the uRNN reaches convergence with less than 20 thousand iterations, while it takes the LSTM from 5 to 10 times as many to finish learning.
+
+Our intuition of why the uRNN does better than the LSTM on the permuted task and not on the first one follows. While the normal pixel-by-pixel task involves long-term memory between the inputs and the output, the permuted one involves long-term dependencies between \textbf{pixels}. This makes it necessary for the network to remember and understand complex relations between several objects that are inputed on very different times. This difference points in the direction that the uRNN might be better at learning stable memory representations for extended periods of time, while the LSTM might be better at memory-based complex reasoning.
 
 \subsection{Optimization experiments}
 Ian Good
 
 {\bf Acknowledgments}: We thank the developers of
-Theano~\cite{bergstra+al:2010-scipy-small} and Blocks~\cite{blocksfuel} for % are you guys using blocks?
+Theano~\cite{Fred2010} for % are you guys using blocks? nope :P
 their great work. We thank NSERC, Compute Canada, Canada Research Chairs and CIFAR for their support.
 
 \bibliography{uRNN}
