@@ -84,25 +84,28 @@ Recent work also supports the idea of using \textit{orthogonal} weight matrices 
 \citep{Saxe2014} \citep{Quoc2015}.
 
 
-In this paper, we explore the use of orthogonal matrices in recurrent neural networks.
+In this paper, we explore the use of orthogonal and unitary matrices in recurrent neural networks.
 We start in Section~\ref{sec:ortho} by showing a novel bound on the propagated gradients
 in recurrent nets when the recurrent matrix is orthogonal.
 Section~\ref{sec:uRNN} discusses the difficulties of parameterizing real valued orthogonal matrices and how
-they are easily alleviated by moving to the \textit{complex} domain. 
-A complex valued, norm preserving matrix,
-$\matr{U}$, is called a \textit{unitary} matrix and is such that 
-$\matr{U}^* \matr{U} = \matr{U} \matr{U}^* = \matr{I}$, where $\matr{U}^*$ is the conjugate transpose
-of $\matr{U}$.   
+they are can be alleviated by moving to the \textit{complex} domain. 
 
 We discuss a novel approach to constructing expressive unitary matrices as the composition of simple
 unitary matrices which require at most $\mathcal{O}(n \log n)$ computation and $\mathcal{O}(n)$ memory,
-unlike general matrices which require $\mathcal{O}(n^2)$ computation and memory. {\color{red} discuss how 
+when the state vector as dimension $n$. These are
+unlike general matrices, which require $\mathcal{O}(n^2)$ computation and memory. {\color{red} discuss how 
 others have tried to work with complex valued representations with little success... }
 
-Whilst our model uses complex valued matrices and parameters, all implementaion and optimization is 
-possible with real numbers. This along with other implementation details are discussed in Section 3.
-The potential of the developed model for learning long term dependencies with relatively few parameters is
-explored in Section 4.
+Whilst our model uses complex valued matrices and parameters, all
+implementaion and optimization is possible with real numbers and has been
+done in Theano. This along with other implementation details are discussed
+in Section 3, and the code used for the experiments is available online.
+The potential of the developed model for learning long term dependencies
+with relatively few parameters is explored in Section 4, in a series of
+experiments in which we find the proposed architectures taking advantage of
+unitary matrices to generally outperform LSTMs and previously proposed
+approaches for very long-term dependencies based on orthogonal
+initialization.
 
 \section{Orthogonal Weights and Bounding the Long-Term Gradient}
 \label{sec:ortho}
@@ -194,6 +197,12 @@ neural network architecture has been mathematically proven to avoid exploding gr
 
 \section{Unitary Evolution RNNs}
 \label{sec:uRNN}
+
+Unitary matrices generalize orthogonal matrices to the complex domain.
+A complex valued, norm preserving matrix,
+$\matr{U}$, is called a \textit{unitary} matrix and is such that 
+$\matr{U}^* \matr{U} = \matr{U} \matr{U}^* = \matr{I}$, where $\matr{U}^*$ is the conjugate transpose
+of $\matr{U}$.   
 
 The most important feature of unitary and orthogonal matrices for our purpose is that they have eigenvalues
 $\lambda_j$ with absolute value 1. The following lemma, proved in \cite{linalgbook}, may shed light on a 
