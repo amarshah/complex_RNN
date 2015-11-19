@@ -74,7 +74,7 @@ the objective: it assumes that a small change in the parameters will yield a sma
 and this assumption is violated when very large gradients occur. As the number of time steps
 considered in the sequence of states grow, the shrinking or expanding effects associated with the state-to-state
 transformation at individual time steps can grow exponentially, yielding respectively vanishing or exploding
-gradients. See~\citet{Pascanu+al-ICML2013-small} for a review.
+gradients. See~\citet{Pascanu2013} for a review.
 
 Although the long-term dependencies problem appears intractable in the absolute~\citep{Yoshua94} for
 parametrized dynamical systems, several heuristics have been found in recent years to help considerably
@@ -367,54 +367,102 @@ For full disclosure and reproducibility, we explain our initialization strategy 
   help optimization \ref{batchnorm?}.
 \end{itemize}
 
-
 \section{Experiments}
-In this section we show the performance of our uRNN on several tasks related to learning long-term dependencies. These problems were especially created to be pathologically hard, and have been used as benchmarks for testing the capacity of a model to capture long-term memory \citep{LSTM} \citep{HF} \citep{Quoc2015}.
+
+In this section we explore the performance of our uRNN in relation to RNN with tanh activations,
+IRNN \citep{Quoc2015}, an RNN with ReLU activations with weight matrix initialized to the identity, 
+and LSTM \citep{LSTM} models. We show that the uRNN shines quantitatively when it comes to modelling 
+long term dependencies and exhibits qualitatively different learning properties to the other models 
+ 
+We chose a handful of tasks to evaluate the performance of the various models.
+The tasks were especially created to be be pathologically hard, and have been used 
+as benchmarks for testing the ability of a model to capture long-term memory 
+{\color{red} cite something}. 
+
+We tried a handful of optimization algorithms for the various models we wished to compare. 
+RMSprop optimization \citep{RMSPROP} tended to lead to fastest convergence and is what we stuck to for all
+experiments hereonin. However, we found that the IRNN was particularly unstable, and would only run without 
+blowing up with incredibly low learning rates and gradient clipping. Since the performance was so poor
+relative to the other models we compare against, we did not continue to test with it. An example of the
+performance using a learning rate of $10^{-8} $on one of the copy memory tasks is plotted in the Appendix. 
+We used a learning rate of $10^{-3}$
+and a decay rate of $0.9$. For the LSTM and RNN models, we had to clip gradients at 1 to avoid exploding 
+gradients. Gradient clipping was unnecessary for the uRNN models.
+
 
 \subsection{Copying memory problem}
-Recurrent networks have major issues when the outputs they try to model depend on inputs that were sent a long time ago \citep{Yoshua94} \citep{Pascanu2013}. Therefore, it is a natural task to ask a recurrent network to reproduce exactly an input it has seen long ago.
 
-The task starts with the network being fed 10 symbols choosen uniformly at random between $\{a_i\}_{i=0}^7$ and represent the sequence to be remembered. Then we give the network another symbol $a_8$ repeated for a very long time. We give this symbol $a_8$ the name `blank'. After the repeated blanks, the network reads the symbol $a_9$, followed again by blanks. This is the precise moment when the network is supposed to start outputing the 10 original symbols. At any other time, the network should ouput blanks.
-If the entire input sequence has length $T$, the effective time lag for which our network needs to remember the symbols is $T-10$. When $T$ is long enough, this problem becomes violently hard for current approaches.
+Recurrent networks have been known to have trouble remembering information about inputs seen
+many time steps previously \citep{Yoshua94, Pascanu2013}. 
+We therefore want to test the uRNN's ability to recall exactly data seen a long time ago.
 
-A baseline can be established by realizing what the best strategy is without remembering any of the 10-digit input. This strategy (which we deem memory-less) would be to predict a blank at every position except for the ten outputs after the delimiter $a_9$, and in those position uniformly at random from $\{a_i\}_{i=0}^7$. Since we are using cross-entropy, if $o_t$ is the probability that the network outputs for the correct answer at time $t$ then the cost of this strategy is exactly
+Following a similar setup to \cite{LSTM}, we outline the setup of the copy memory problem.
+Consider 10 categories, $\{ a_i \}_{i=0}^9$.   
+The input takes the form of a $T+20$ length vector of categories, where we test over a variety of values
+of $T$. 
+The first $10$ entries are sampled uniformly, independently and with replacement from $\{a_i\}_{i=0}^7$,
+and represent the sequence which will need to be remembered. 
+The next $T-1$ entries are set to $a_8$, which can be thought of as the 'blank' category. 
+The next single entry is $a_9$, which represents a delimiter, which should indicate to the algorithm
+that it is required to reproduce the initial $10$ categories in the output. 
+The remaining $10$ entries are set to $a_8$. The required output sequence consists of $T+10$ 
+repeated entries of $a_8$, followed by the first $10$ categories of the input sequence in exactly the
+same order. The goal is to minimize the average categorical cross entropy of category predictions 
+at each time step of the sequence.
+ 
+The task amounts to having to remember a categorical sequence of length 10, for $T$ time steps.
 
-\begin{equation}
-  -\frac{\sum_{t=1}^{T+20} \log (o_t)}{T+20} = - \frac{\sum_{t=T+11}^{T+20} \log \left( \frac{1}{8} \right)}{T+20} = \frac{10 \log(8)}{T+20} 
-\end{equation}
+A simple baseline can be established by considering an optimal strategy which does not require any memory, 
+which we deem a \textit{memoryless} strategy. The memoryless strategy would be to predict $a_8$ for 
+$T+10$ entries and then predict each of the final $10$ categories from the set $\{a_i\}_{i=0}^7$ independently
+and uniformly at random. The mean categorical cross entropy of this strategy is easy to calculate, and equal 
+to $\frac{10 \log(8) }{T+20} $. 
 
-\begin{figure}[ht] 
-  \label{ fig7} 
+\begin{figure}[t!]
+  \centering
+  \label{fig7} 
   \begin{minipage}[b]{0.5\linewidth}
-    \centering
+    %\centering
     \includegraphics[scale=0.25]{figures/memory_100.jpeg}
-    \vspace{4ex}
+    \vspace{1ex}
   \end{minipage}%%
   \begin{minipage}[b]{0.5\linewidth}
-    \centering
+    %\centering
     \includegraphics[scale=0.25]{figures/memory_200.jpeg}
-    \vspace{4ex}
-    \end{minipage} 
-  \begin{minipage}[b]{0.5\linewidth}
-    \centering
-    \includegraphics[scale=0.25]{figures/memory_300.jpeg}
-    \vspace{4ex}
-    \end{minipage}%% 
-  \begin{minipage}[b]{0.5\linewidth}
-    \centering
-    \includegraphics[scale=0.25]{figures/memory_500.jpeg}
-    \vspace{4ex}
+    \vspace{1ex}
   \end{minipage} 
+  \begin{minipage}[b]{0.5\linewidth}
+    %\centering
+    \includegraphics[scale=0.25]{figures/memory_300.jpeg}
+    %\vspace{4ex}
+  \end{minipage}%% 
+  \begin{minipage}[b]{0.5\linewidth}
+    %\centering
+    \includegraphics[scale=0.25]{figures/memory_500.jpeg}
+    %\vspace{4ex}
+  \end{minipage} 
+  \caption{Results of the copying memory problem for $T=100, 200, 300, 500$.}
 \end{figure}
 
-We ran these experiments for an RNN with tanh activations, an LSTM and an IRNN to compare with our uRNN. All networks except the uRNN have 32 hidden units. This results in about 1000 parameters for the RNN and IRNN, and 4000 for the LSTM. The uRNN was run with 128 hidden units, or about 1900 parameters (less than half as the LSTM). All experiments where done using RMSPROP \citep{RMSPROP}. The IRNN was extremely unstable throughout the experimentation, and we could avoid divergence only with a delay of 100 and learning rate of $10^{-8}$. Because of this, it is not included in the figures, and the plot for this IRNN is shown in the appendix.
+We ran experiments where the RNN with tanh activations, IRNN and LSTM had hidden layers of size 32 and the
+uRNN had a hidden layer of size 128. This equates to roughly 1000 parameters for the RNN and IRNN, roughly 
+1900 parameters for the uRNN and roughly 4000 parameters for the LSTM. Note that the number of uRNN parameters
+is less than half of that of the LSTM.
 
-In figure 1, we see that except in the simplest case both the RNN with tanh and more surprisingly the LSTMs get almost exactly the same cost as the memoryless strategy. This behaviour is consistent with the results of \cite{NTM}, in which poor performance is evidenced by LSTMs for a very similar problem.
+In figure 1, we see that except in the simplest case both the RNN with tanh and more surprisingly 
+the LSTMs get almost exactly the same cost as the memoryless strategy. This behaviour is consistent 
+with the results of \cite{NTM}, in which poor performance is reported for the LSTM for a very similar 
+copying memory problem.
 
-What is very interesting is not only the fact that the uRNN displays perfect performance in very little iterations, but how qualitatively different the results are from the LSTM. One of the most noticeable features is that it goes from initialization to almost 0 cost without staying at the baseline. In contrast, for the first plot, the LSTM stays on the baseline for a while, before starting to improve very slowly. This evidences the fact that the uRNN is a very different model than both LSTMs and classical RNNs, potentially achieving very different internal representations.
+The uRNN consistently achieves perfect performance in relatively few iterations, even when having to recall
+sequences after 500 time steps. What is remarkable is that the uRNN does not get stuck at the baseline at 
+all, whilst the LSTM and RNN do. This behaviour suggests that the representation and learning of the uRNN
+has very different properties from both the LSTM and RNN. 
 
 \subsection{Adding Problem}
 In this problem, the input consists of two sequences of length $T$. The first sequence (let's call it $x$) consists of numbers sampled uniformly at random from a uniform $\mathcal{U}[0,1]$. The second one consists of all zeros, except for two positions that are 1. This two positions (let's call them $i$ and $j$) are sampled at random from the first and second half respectively. An output is given only after the last time step, and it is $x_i + x_j$ (i.e. the numbers from the first sequence in the marked positions).
+
+With some elemntary calculations, we can see that predicting 1 regardless of the input sequence gives in expectation 0.167 of error, so we use this as a baseline.
 
 \begin{figure}[ht] 
   \label{ fig7} 
@@ -439,6 +487,11 @@ In this problem, the input consists of two sequences of length $T$. The first se
     \vspace{4ex}
   \end{minipage} 
 \end{figure}
+
+For this problem we ran the same models as before, with 128 hidden units on RNN with tanh, IRNN and LSTM, and 512 for the uRNN. This means that the RNN and IRNN have roughly 10K parameters, the LSTM about 40K, and the uRNN near 15K. We can see that up to $T=400$ both the LSTM and the uRNN learn models that go well below the baseline. In the case of sequences of size 750, both algorithms do quite well, with errors remarkably below the baseline, although not quite reaching 0. The uRNN achieves lower error, but it's curve is more noisy.
+
+The RNN with tanh and IRNN wasn't able to go below baseline on any of the experiments. \cite{Quoc2015} reports that their RNN solves the problem for $T=150$ and the IRNN for $T=300$, with more than a million iterations before they start learning. However, none of the algorithms was able to learn for $T=400$, a task on which both our uRNN and the LSTM do quite well. We evidenced two big differences with the results reported by \cite{Quoc2015} for the same task. The first is the performance of the IRNN, which wasn't able to converge in our case for any experiment. The second, the overwhelming improvement of our LSTM in comparison to theirs. Both of these differences can potentially be explained by our use of RMSPROP instead of momentum.
+
 
 
 \subsection{Pixel-by-pixel MNIST}
