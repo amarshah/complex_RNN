@@ -413,6 +413,28 @@ gradients. Gradient clipping was unnecessary for the uRNN models.
 
 \subsection{Copying memory problem}
 
+\begin{figure}[t!]
+  \centering
+  \label{fig1} 
+  \begin{minipage}[b]{0.5\linewidth}
+    %\centering
+    \includegraphics[scale=0.25]{figures/memory_100.jpeg}
+  \end{minipage}%%
+  \begin{minipage}[b]{0.5\linewidth}
+    %\centering
+    \includegraphics[scale=0.25]{figures/memory_200.jpeg}
+  \end{minipage} 
+  \begin{minipage}[b]{0.5\linewidth}
+    %\centering
+    \includegraphics[scale=0.25]{figures/memory_300.jpeg}
+  \end{minipage}%% 
+  \begin{minipage}[b]{0.5\linewidth}
+    %\centering
+    \includegraphics[scale=0.25]{figures/memory_500.jpeg}
+  \end{minipage} 
+  \caption{Results of the copying memory problem for time lag $=100, 200, 300, 500$.}
+\end{figure}
+
 Recurrent networks have been known to have trouble remembering information about inputs seen
 many time steps previously \citep{Yoshua94, Pascanu2013}. 
 We therefore want to test the uRNN's ability to recall exactly data seen a long time ago.
@@ -439,32 +461,6 @@ $T+10$ entries and then predict each of the final $10$ categories from the set $
 and uniformly at random. The mean categorical cross entropy of this strategy is easy to calculate, and equal 
 to $\frac{10 \log(8) }{T+20} $. 
 
-\begin{figure}[t!]
-  \centering
-  \label{fig1} 
-  \begin{minipage}[b]{0.5\linewidth}
-    %\centering
-    \includegraphics[scale=0.25]{figures/memory_100.jpeg}
-    \vspace{1ex}
-  \end{minipage}%%
-  \begin{minipage}[b]{0.5\linewidth}
-    %\centering
-    \includegraphics[scale=0.25]{figures/memory_200.jpeg}
-    \vspace{1ex}
-  \end{minipage} 
-  \begin{minipage}[b]{0.5\linewidth}
-    %\centering
-    \includegraphics[scale=0.25]{figures/memory_300.jpeg}
-    %\vspace{4ex}
-  \end{minipage}%% 
-  \begin{minipage}[b]{0.5\linewidth}
-    %\centering
-    \includegraphics[scale=0.25]{figures/memory_500.jpeg}
-    %\vspace{4ex}
-  \end{minipage} 
-  \caption{Results of the copying memory problem for time lag $=100, 200, 300, 500$.}
-\end{figure}
-
 We ran experiments where the RNN with tanh activations, IRNN and LSTM had hidden layers of size 32 and the
 uRNN had a hidden layer of size 128. This equates to roughly 1000 parameters for the RNN and IRNN, roughly 
 1900 parameters for the uRNN and roughly 4000 parameters for the LSTM and uRNN.
@@ -473,6 +469,27 @@ In figure 1, we see that except in the simplest case both the RNN with tanh and 
 the LSTMs get almost exactly the same cost as the memoryless strategy. This behaviour is consistent 
 with the results of \cite{NTM}, in which poor performance is reported for the LSTM for a very similar 
 copying memory problem.
+
+\begin{figure}[t!] 
+  \label{fig2} 
+  \begin{minipage}[b]{0.5\linewidth}
+    \centering
+    \includegraphics[scale=0.25]{figures/memory_100.jpeg}
+  \end{minipage}%%
+  \begin{minipage}[b]{0.5\linewidth}
+    \centering
+    \includegraphics[scale=0.25]{figures/adding_200.jpeg}
+    \end{minipage} 
+  \begin{minipage}[b]{0.5\linewidth}
+    \centering
+    \includegraphics[scale=0.25]{figures/adding_400.jpeg}
+    \end{minipage}%% 
+  \begin{minipage}[b]{0.5\linewidth}
+    \centering
+    \includegraphics[scale=0.25]{figures/adding_750.jpeg}
+  \end{minipage} 
+  \caption{Results of the adding problem for $T=100, 200, 400, 750$.}
+\end{figure}
 
 The uRNN consistently achieves perfect performance in relatively few iterations, even when having to recall
 sequences after 500 time steps. What is remarkable is that the uRNN does not get stuck at the baseline at 
@@ -484,31 +501,6 @@ In this problem, the input consists of two sequences of length $T$. The first se
 
 With some elemntary calculations, we can see that predicting 1 regardless of the input sequence gives in expectation 0.167 of error, so we use this as a baseline.
 
-\begin{figure}[ht] 
-  \label{fig2} 
-  \begin{minipage}[b]{0.5\linewidth}
-    \centering
-    \includegraphics[scale=0.25]{figures/memory_100.jpeg}
-    \vspace{4ex}
-  \end{minipage}%%
-  \begin{minipage}[b]{0.5\linewidth}
-    \centering
-    \includegraphics[scale=0.25]{figures/adding_200.jpeg}
-    \vspace{4ex}
-    \end{minipage} 
-  \begin{minipage}[b]{0.5\linewidth}
-    \centering
-    \includegraphics[scale=0.25]{figures/adding_400.jpeg}
-    \vspace{4ex}
-    \end{minipage}%% 
-  \begin{minipage}[b]{0.5\linewidth}
-    \centering
-    \includegraphics[scale=0.25]{figures/adding_750.jpeg}
-    \vspace{4ex}
-  \end{minipage} 
-  \caption{Results of the adding problem for $T=100, 200, 400, 750$.}
-\end{figure}
-
 For this problem we ran the same models as before, with 128 hidden units on RNN with tanh, IRNN and LSTM, and 512 for the uRNN. The uRNN has almost 9K parameters, the RNN and IRNN have roughly 16K parameters, while the LSTM has about 60K of them. Note that the LSTM has more than 6 times the parameters than the uRNN. We trained all models on batches of size 20 and 50, the best results are reported. The RNN with tanh activation was not shown for 750 so the differences between the LSTM and the uRNN curves are clearer, and the model achieved almost constant baseline as expected. 
 
 We can see that up to $T=400$ both the LSTM and the uRNN learn models that go well below the baseline. In the case of sequences of size 750, both algorithms do quite well, with errors remarkably below the baseline, although not quite reaching 0. The uRNN achieves lower error, but it's curve is more noisy.
@@ -519,22 +511,20 @@ The RNN with tanh and IRNN weren't able to go below baseline on any of the exper
 
 \subsection{Pixel-by-pixel MNIST}
 
-On this experiment, we feed the neural network the pixels of MNIST \citep{MNIST} images in a sequence, and after this we ask it to recognize the digit. There are two variants of this task. The first one, we feed the digits in order (left to right and up to down). On the second one, we feed the digits in a random fixed permuted order. Since the digit displayed on the image depends on almost every single pixel, there are several very long-term dependencies involved.
-
-\begin{figure}[ht] 
+\begin{figure}[t!] 
   \label{fig3} 
   \begin{minipage}[b]{0.5\linewidth}
     \centering
     \includegraphics[scale=0.25]{figures/mnist.jpeg}
-    \vspace{4ex}
   \end{minipage}%%
   \begin{minipage}[b]{0.5\linewidth}
     \centering
     \includegraphics[scale=0.25]{figures/mnist_perm.jpeg}
-    \vspace{4ex}
   \end{minipage}
   \caption{Pixel-by-pixel MNIST}
 \end{figure}
+
+On this experiment, we feed the neural network the pixels of MNIST \citep{MNIST} images in a sequence, and after this we ask it to recognize the digit. There are two variants of this task. The first one, we feed the digits in order (left to right and up to down). On the second one, we feed the digits in a random fixed permuted order. Since the digit displayed on the image depends on almost every single pixel, there are several very long-term dependencies involved.
 
 The architectures used here are the same as in the adding problem. 128 units and a little more than 65K parameters for the LSTM, 512 units and a little more than 16K parameters for the uRNN. Both models perform remarcably well on both tasks. LSTM does better on the first task, reaching 98\% test accurracy and 95\% for the uRNN. On the other hand, on the permuted pixel-by-pixel task, the uRNN dominates with 91.4\% of accuracy in contrast to the 88\% of the LSTM, despite having less than one fourth the amount of parameters. This result is also state of the art on this task, compared to \cite{Quoc2015} IRNN, which reaches close to 82\%.
 
@@ -546,17 +536,15 @@ Our intuition of why the uRNN does better than the LSTM on the permuted task and
 \subsubsection{Gradient propagation}
 As discussed in section 2, one of the most important features of learning long term dependencies is controlling $\frac{\partial C}{\partial h_t}$. In order to study how the different models propagate this quantity, we examined the norms of this gradients as a function of $t$. To do this, we run the models for the adding problem and calculate the gradients of the cost with respect to the hidden units at the beginning of training and after 100 iterations
 
-\begin{figure}[ht] 
+\begin{figure}[t!] 
   \label{fig4} 
   \begin{minipage}[b]{0.5\linewidth}
     \centering
     \includegraphics[scale=0.25]{figures/grads_0.jpeg}
-    \vspace{4ex}
   \end{minipage}%%
   \begin{minipage}[b]{0.5\linewidth}
     \centering
     \includegraphics[scale=0.25]{figures/grads_100.jpeg}
-    \vspace{4ex}
   \end{minipage}
   \caption{Gradient norms}
 \end{figure}
@@ -567,23 +555,18 @@ We see in figure 4 the results. At first sight we see that during the begining o
 
 If a network needs to make predictions based on information spanning many time steps, then it necessary for it to incorporate new information for a very long time. In order to test the capacity of the network to keep incorporating new memories, we test the saturation of the hidden states. What this means is that if the hidden states of an RNN become constant after a certain amount of iterations, then it is clearly not going to change it's prediction based on this new information. The metric we designed to study this phenomenon is the euclidean distance between the hidden state at time $t$ and the final hidden state at time $T$. If $d(h_t, h_T)$ goes to zero quickly, then the information passed after that point wasn't incorporated by the network.
 
-\begin{figure}[ht] 
+\begin{figure}[t!] 
 \label{fig4} 
 \begin{minipage}[b]{0.5\linewidth}
   \centering
-  \includegraphics[scale=0.25]{figures/grads_0.jpeg}
-  \vspace{4ex}
+  \includegraphics[scale=0.25]{figures/hnorms.jpeg}
 \end{minipage}%%
 \begin{minipage}[b]{0.5\linewidth}
   \centering
-  \includegraphics[scale=0.25]{figures/grads_100.jpeg}
-  \vspace{4ex}
+  \includegraphics[scale=0.25]{figures/hdiff.jpeg}
 \end{minipage}
 \caption{Gradient norms}
 \end{figure}
-
-
-
 
 {\bf Acknowledgments}: We thank the developers of
 Theano~\cite{Fred2010} for % are you guys using blocks? nope :P
