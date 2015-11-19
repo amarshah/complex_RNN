@@ -8,21 +8,24 @@
 \usepackage{amsthm}
 \usepackage{color}
 
-\title{\scalebox{0.95}{Unitary Evolution Recurrent Neural Networks}}
+\newcommand*\samethanks[1][\value{footnote}]{\footnotemark[#1]}
 
+\title{\scalebox{0.98}{Unitary Evolution Recurrent Neural Networks}}
 
-\author{Martin Arjovsky \thanks{Indicates first authors. Ordering determined by coin flip.} \\
-Universidad de Buenos Aires\\
+\author{
+%\centering
+Martin Arjovsky \thanks{Indicates first authors. Ordering determined by coin flip.} \\
+Universidad de Buenos Aires \\
 \texttt{marjovsky@dc.uba.ar} \\
 \And
-Amar Shah$^*$ \\
+Amar Shah \samethanks \\
 Cambridge University \\
 \texttt{as793@cam.ac.uk} \\
-\AND
+\And
 Yoshua Bengio \\
 Universit\'e de Montr\'eal, CIFAR Senior Fellow
-% YB: I prefer to not put my e-mail address on papers
 }
+% YB: I prefer to not put my e-mail address on papers
 
 % The \author macro works with any number of authors. There are two commands
 % used to separate the names and addresses of multiple authors: \And and \AND.
@@ -93,8 +96,10 @@ they are can be alleviated by moving to the \textit{complex} domain.
 We discuss a novel approach to constructing expressive unitary matrices as the composition of simple
 unitary matrices which require at most $\mathcal{O}(n \log n)$ computation and $\mathcal{O}(n)$ memory,
 when the state vector has dimension $n$. These are
-unlike general matrices, which require $\mathcal{O}(n^2)$ computation and memory. {\color{red} discuss how 
-others have tried to work with complex valued representations with little success... }
+unlike general matrices, which require $\mathcal{O}(n^2)$ computation and memory. 
+Complex valued representation has been considered for deep representation learing in the past, 
+there has been limited success and adoption of it \citep{hirose2003complex, zimmermann2011comparison}. 
+We hope our findings will change this.
 
 Whilst our model uses complex valued matrices and parameters, all
 implementaion and optimization is possible with real numbers and has been
@@ -263,7 +268,7 @@ whilst being impossible in traditional neural networks.
  
 With this in mind, in this work we choose to consider recurrent neural networks with unitary hidden to hidden
 weight matrices. Our claim is that the ability to have large hidden layers where hidden 
-states norms are preserved provides a powerful tool for modelling long term dependencies in sequence data. 
+states norms are preserved provides a powerful tool for modeling long term dependencies in sequence data. 
 Early work by \cite{Yoshua94} suggests that having a large memory may be crucial for solving 
 difficult tasks involving long ranging dependencies: the smaller the state dimension, the more
 information necessarily has to be eliminated when mapping a long sequence to a fixed-dimension state.
@@ -322,12 +327,12 @@ We learn the initial hidden state $h_0 \in \CC^{n_h}$ as a parameter of the mode
 
 Choosing an appropriate nonlinearity is not trivial in the complex domain.
 As discussed in the introduction, using a ReLU is a natural choice in combination with a norm preserving
-weight matrix. {\color{red}Previous work on neural networks with complex valued} hidden states 
-have applied ReLU nonlinearities on the real and imaginary parts separately \ref{Old CRNN papers}.
+weight matrix. We first experimented with placing separate ReLU activations on the real and imaginary
+parts of the hidden states.
 However, we found that such a nonlinearity usually performed poorly.
-Our intuition as to why applying separate ReLU nonlinearities to the real 
-and imaginary parts performed badly is that such an operation brutally impacts the 
-phase of a complex number.
+Our intuition is that applying separate ReLU nonlinearities to the real 
+and imaginary parts brutally impacts the 
+phase of a complex number, making it difficult to learn structure.
 
 We speculate that maintaining the phase of hidden states may be important for storing information 
 across a large number of time steps, and our experimentation supported this claim.
@@ -351,12 +356,12 @@ $\sigma_\mathrm{modReLU}(z) = \sigma_\mathrm{ReLU}(|z| + b) \frac{z}{|z|}$.
 
 \subsection{Hidden to output}
 
-To map hidden states to output, we define a matrix $\matr{U} \in \RR^{2n_h \times n_o}$, 
+To map hidden states to output, we define a matrix $\matr{U} \in \RR^{n_o \times 2n_h}$, 
 where $n_o$ is the output dimension. We calculate a linear output as
 \begin{equation} o_t = \matr{U} \begin{pmatrix} Re(h_t) \\ Im(h_t) \end{pmatrix} + b_o , \end{equation}
 
 where $b_o \in \RR^{n_o}$ is the output bias. 
-The linear output is real valued ($o_t \in \RR^{n_h}$) and can be used for prediction and loss function 
+The linear output is real valued ($o_t \in \RR^{n_o}$) and can be used for prediction and loss function 
 calculation akin to typical neural networks (e.g. it may be passed through a softmax which is used for 
 cross entropy calculation for classification tasks).
 
@@ -392,7 +397,7 @@ For full disclosure and reproducibility, we explain our initialization strategy 
 In this section we explore the performance of our uRNN in relation to (a) RNN with tanh activations,
 (b) IRNN \citep{Quoc2015}, that is 
 an RNN with ReLU activations and with the recurrent weight matrix initialized to the identity, 
-and (c) LSTM \citep{LSTM} models. We show that the uRNN shines quantitatively when it comes to modelling 
+and (c) LSTM \citep{LSTM} models. We show that the uRNN shines quantitatively when it comes to modeling 
 long term dependencies and exhibits qualitatively different learning properties to the other models 
  
 We chose a handful of tasks to evaluate the performance of the various models.
@@ -430,7 +435,10 @@ gradients. Gradient clipping was unnecessary for the uRNN models.
     %\centering
     \includegraphics[scale=0.25]{figures/memory_500.jpeg}
   \end{minipage} 
-  \caption{Results of the copying memory problem for time lags of $100, 200, 300, 500$.}
+  \caption{Results of the copying memory problem for time lags of $100, 200, 300, 500$. 
+   The LSTM is able to beat the baseline only for $100$ times steps. Conversely the uRNN 
+    is able to completely solve each time length in very few training iterations,
+    without getting stuck at the baseline.}
 \end{figure}
 
 Recurrent networks have been known to have trouble remembering information about inputs seen
@@ -485,7 +493,9 @@ copying memory problem.
     \centering
     \includegraphics[scale=0.25]{figures/adding_750.jpeg}
   \end{minipage} 
-  \caption{Results of the adding problem for $T=100, 200, 400, 750$.}
+  \caption{Results of the adding problem for $T=100, 200, 400, 750$. The RNN with tanh
+	  is not able to beat the baseline for any time length. The LSTM and the uRNN show similar 
+	  performance across time lengths, consistently beating the baseline.}
 \end{figure}
 
 The uRNN consistently achieves perfect performance in relatively few iterations, even when having to recall
@@ -536,7 +546,11 @@ learning rates ($10^{-3}$ as opposed to $10^{-8}$) than \cite{Quoc2015} use for 
     \centering
     \includegraphics[scale=0.25]{figures/mnist_perm.jpeg}
   \end{minipage}
-  \caption{Results on pixel by pixel MNIST classification tasks.}
+  \caption{Results on pixel by pixel MNIST classification tasks. 
+           The uRNN is able to converge in a fraction of the iterations
+	    that the LSTM requires. The LSTM performs better on MNIST classification, 
+	    but the uRNN outperforms on the more complicated task
+	    of permuted pixels.}
 \end{figure}
 
 
@@ -556,8 +570,8 @@ However, when we permute the ordering of the pixels, the uRNN dominates with 91.
 contrast to the 88\% of the LSTM, despite having less than a quarter of the parameters. 
 The uRNN therefore achieves state of the art performance on the task of classifying permuted MNIST pixels.
 
-This result is also state of the art on this task, compared to \cite{Quoc2015} IRNN, which reaches 
-close to 82\% but after 1 million training iterations.Notice that uRNN reaches convergence in less 
+This result is also state of the art on this task, compared to IRNN \citep{Quoc2015}, which reaches 
+close to 82\% but after 1 million training iterations. Notice that uRNN reaches convergence in less 
 than 20 thousand iterations, while it takes the LSTM from 5 to 10 times as many to finish learning.
 
 Permuting the pixels of MNIST images creates many longer term dependencies across pixels than in the 
@@ -579,7 +593,9 @@ LSTM is better suited to more local sequence structure tasks.
     \centering
     \includegraphics[scale=0.25]{figures/grads_100.jpeg}
   \end{minipage}
-  \caption{Norms of the gradients with respect to hidden states, $\norm{\frac{\partial C}{\partial h_t}}$}
+  \caption{Norms of the gradients with respect to hidden states i.e. 
+   $\norm{\frac{\partial C}{\partial h_t}}$. The gradient norms of uRNNs do not decay
+   as fast as for other models as training progresses.}
 \end{figure}
 
 \paragraph{Norms of hidden state gradients.} As discussed in Section~\ref{sec:ortho}, key to being able to learn long term 
@@ -601,12 +617,12 @@ a forward pass with newly generated data for the adding problem with $T=1000$. I
 effects, we plot the norms of the hidden states and the $L_2$ distance between each state and the last in
 Figure~\ref{fig:saturation}.    
 
-Notice that whilst the norms of hidden states in the uRNN grow very steadily ove time, the norms of hidden
+Notice that whilst the norms of hidden states in the uRNN grow very steadily over time, the norms of hidden
 states in the LSTM grow very fast, and then stay constant after about $500$ time steps. This behaviour may
 suggest that the LSTM hidden states saturate in their ability to incorporate new information, which is vital
-for modelling complicated sequences. It is interesting to see that the LSTM hidden state at $t=500$, 
-is close to that of $t=1000$, whilst this is far from the case in the uRNN. Once again this suggests that
-the LSTM's capacity to use new information to alter its hidden state severly degrade with sequence length.
+for modeling complicated sequences. It is interesting to see that the LSTM hidden state at $t=500$, 
+is close to that of $t=1000$, whilst this is far from the case in the uRNN. Again, this suggests that
+the LSTM's capacity to use new information to alter its hidden state severly degrades with sequence length.
 The uRNN does not suffer from this difficulty nearly as badly. 
 
 A clear example of this phenomenon was observed in the adding problem with $T=750$. We found that the 
@@ -614,10 +630,20 @@ Pearson correlation between the LSTM output prediction and the first of the two 
 sum is the target output) was $\rho = 0.991$. This suggests that the LSTM learnt to simply find and store the 
 first sample, as it was unable to 
 incorporate any more information by the time it reached the second, due to 
-saturation of the hidden states.    
+saturation of the hidden states.   
 
 
 \section{Discussion}
+
+There are a plethora of further ideas that may be explored from our findings, both with regards to 
+learning representation and efficient implementation. For example, one hurdle of modeling long sequences 
+with recurrent networks is the requirement of storing all hidden state values for the purpose of gradient
+backpropagation. This can be prohibitive, since GPU memory is typically a limiting factor of neural network 
+optimization. However, since our weight matrix is unitary, its inverse is its conjugate transpose, 
+which is just as easy to operate with. If further we were to use an invertible nonlinearity function, we would 
+no longer need to store hidden states, since they can be recomputed in the backward pass. This could have 
+potentially huge implications, as we would be able to reduce memory usage by an order of $T$, the number of
+time steps. This would make having immensely large hidden layers possible, perhaps enabling vast memory representations.
 
 In this paper we demonstrate state of the art performance on hard problems requiring
 long term reasoning and memory. These results are based on a novel parameterization of unitary matrices which permit
@@ -629,15 +655,6 @@ to mitigate the problems of vanishing and exploding gradients. Empirical evidenc
 to pass gradient information through long sequences and does not suffer from saturating hidden states as much
 as LSTMs, typical RNNs, or RNNs initialized with the identity weight matrix (IRNNs).
 
-There are a plethora of further ideas that may be explored from our findings, both with regards to 
-learning representation and efficient implementation. For example, one hurdle of modeling long sequences 
-with recurrent networks is the requirement of storing all hidden state values for the purpose of gradient
-backpropagation. This can be prohibitive, since GPU memory is typically a limiting factor of neural network 
-optimization. However, since our weight matrix is unitary, its inverse is its conjugate transpose, 
-which is just as easy to operate with. If further we were to use an invertible nonlinearity function, we would 
-not need to store hidden states anymore, since they can be recomputed in the backward pass. This could have 
-potentially huge implications, as we would be able to reduce memory usage by an order of $T$, the number of
-time steps. This would make having immensely large hidden layers possible, perhaps enabling vast memory representations.
   
    
 
@@ -654,7 +671,10 @@ time steps. This would make having immensely large hidden layers possible, perha
   \centering
   \includegraphics[scale=0.25]{figures/hdiff.jpeg}
 \end{minipage}
-\caption{\textbf{Left}: Norms of the hidden states, \textbf{right}: $L2$ distance between $h_t$ and $h_T$.}
+\caption{\textbf{Left}: Norms of the hidden states, \textbf{right}: $L2$ distance between $h_t$ and $h_T$.
+	The uRNN hidden state norms stay much more consistent over time than the LSTM. 
+        The hidden states of a LSTM stay almost the same after a number of time steps, 
+        suggesting that it is not able to use new input information.}
 \end{figure}
 
 
