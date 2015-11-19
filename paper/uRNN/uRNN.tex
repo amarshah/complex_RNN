@@ -261,11 +261,12 @@ that the number of parameters, memory and computational cost increase almost lin
 of the hidden layer. With such a weight matrix, immensely large hidden layers are feasible to train, 
 whilst being impossible in traditional neural networks. 
  
-With this in mind, we choose to conisder recurrent neural networks with unitary hidden to hidden
-weight matrices in this work. Our claim is that the ability to have large hidden layers where hidden 
+With this in mind, in this work we choose to consider recurrent neural networks with unitary hidden to hidden
+weight matrices. Our claim is that the ability to have large hidden layers where hidden 
 states norms are preserved provides a powerful tool for modelling long term dependencies in sequence data. 
 Early work by \cite{Yoshua94} suggests that having a large memory may be crucial for solving 
-difficult tasks involving long ranging dependencies.
+difficult tasks involving long ranging dependencies: the smaller the state dimension, the more
+information necessarily has to be eliminated when mapping a long sequence to a fixed-dimension state.
 
 We call any RNN architecture which uses a unitary hidden to hidden matrix a \textit{unitary evolution RNN}
 (uRNN). After experimenting with several structures, we settled on the following composition
@@ -277,7 +278,7 @@ for implementation purposes. When the final cost is real and differentiable, we 
 optimization to learn the parameters.
 \cite{dfc} construct a real valued, non-orthogonal matrix using a similar parameterization with the motivation
 of parameter reduction by an order of magnitude on an industrial sized network. This combined with earlier
-work \cite{fastfood} suggests that it is possible to create highly expressive matrices by composing simple
+work \citep{fastfood} suggests that it is possible to create highly expressive matrices by composing simple
 matrices with few parameters.
 
 In the following section, we explain details on how to implement our model and illustrate how we bypass the
@@ -330,7 +331,7 @@ phase of a complex number.
 
 We speculate that maintaining the phase of hidden states may be important for storing information 
 across a large number of time steps, and our experimentation supported this claim.
-A variation of the ReLU that we deem modReLU, is what we 
+A variation of the ReLU that we name {\bf modReLU}, is what we 
 finally chose as our nonlinearity. The modReLU is a pointwise nonlinearity,  
 $\sigma_\mathrm{modReLU} (z) : \CC \rightarrow \CC$, which
 affects only the absolute value of a complex number, and we define it as 
@@ -388,9 +389,10 @@ For full disclosure and reproducibility, we explain our initialization strategy 
 \section{Experiments}
 \label{expts}
 
-In this section we explore the performance of our uRNN in relation to RNN with tanh activations,
-IRNN \citep{Quoc2015}, an RNN with ReLU activations with weight matrix initialized to the identity, 
-and LSTM \citep{LSTM} models. We show that the uRNN shines quantitatively when it comes to modelling 
+In this section we explore the performance of our uRNN in relation to (a) RNN with tanh activations,
+(b) IRNN \citep{Quoc2015}, that is 
+an RNN with ReLU activations and with the recurrent weight matrix initialized to the identity, 
+and (c) LSTM \citep{LSTM} models. We show that the uRNN shines quantitatively when it comes to modelling 
 long term dependencies and exhibits qualitatively different learning properties to the other models 
  
 We chose a handful of tasks to evaluate the performance of the various models.
@@ -592,8 +594,8 @@ After 100 iterations of training, each model experiences vanishing gradients,
 but the uRNN is best able to propagate information, having much less decay.
 
 \paragraph{Hidden state saturation.} We claim that typical recurrent architectures saturate, in the 
-sense that after they acquire some information, they are unable to acquire further information as a 
-sequence progresses. The uRNN does not suffer as greatly as other models do. 
+sense that after they acquire some information, it becomes much more difficult to acquire further information pertaining
+to longer dependencies. In our experiments, it is clear that the uRNN does not suffer as much as other models do. 
 We took the uRNN and LSTM models trained on the adding problem with $T=200$, and computed 
 a forward pass with newly generated data for the adding problem with $T=1000$. In order to show saturation
 effects, we plot the norms of the hidden states and the $L_2$ distance between each state and the last in
@@ -603,9 +605,9 @@ Notice that whilst the norms of hidden states in the uRNN grow very steadily ove
 states in the LSTM grow very fast, and then stay constant after about $500$ time steps. This behaviour may
 suggest that the LSTM hidden states saturate in their ability to incorporate new information, which is vital
 for modelling complicated sequences. It is interesting to see that the LSTM hidden state at $t=500$, 
-is close to that of $t=1000$, whilst this is for from the case in the uRNN. Once again this suggests that
+is close to that of $t=1000$, whilst this is far from the case in the uRNN. Once again this suggests that
 the LSTM's capacity to use new information to alter its hidden state severly degrade with sequence length.
-The uRNN does not suffer this flaw nearly as badly. 
+The uRNN does not suffer from this difficulty nearly as badly. 
 
 A clear example of this phenomenon was observed in the adding problem with $T=750$. We found that the 
 Pearson correlation between the LSTM output prediction and the first of the two uniform samples (whose 
@@ -618,14 +620,14 @@ saturation of the hidden states.
 \section{Discussion}
 
 In this paper we demonstrate state of the art performance on hard problems requiring
-long term reasoning and memory. We propose a novel parameterization of unitary matrices which permit
+long term reasoning and memory. These results are based on a novel parameterization of unitary matrices which permit
 efficient matrix computations and parameter optimization. Whilst complex domain modeling has been 
-widely succesful in the signal processing community (e.g. Fourier transforms, wavelets), we are yet to 
-exploit the power of complex valued representation amongst the deep learning community. Our hope is that this
-work will be a step forward in this direction. We motivate the idea of unitary evolution as a way
-to overcome the problems of vanishing and exploding gradients. Empirical evidence suggests that our uRNN is better able
+widely succesful in the signal processing community (e.g. Fourier transforms, wavelets), we have yet to 
+exploit the power of complex valued representation in the deep learning community. Our hope is that this
+work will be a step forward in this direction. We motivate the idea of unitary evolution as a novel way
+to mitigate the problems of vanishing and exploding gradients. Empirical evidence suggests that our uRNN is better able
 to pass gradient information through long sequences and does not suffer from saturating hidden states as much
-as LSTMs or typical RNNs. 
+as LSTMs, typical RNNs, or RNNs initialized with the identity weight matrix (IRNNs).
 
 There are a plethora of further ideas that may be explored from our findings, both with regards to 
 learning representation and efficient implementation. For example, one hurdle of modeling long sequences 
