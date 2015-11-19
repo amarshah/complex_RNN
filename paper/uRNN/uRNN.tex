@@ -41,7 +41,7 @@
 \newcommand\norm[1]{\left\lVert#1\right\rVert}
 %\iclrfinalcopy % Uncomment for camera-ready version
 
-\renewcommand{\baselinestretch}{0.99}
+\renewcommand{\baselinestretch}{0.98}
 
 \begin{document}
 
@@ -71,9 +71,13 @@ to reliably store bits of information in any parametrized dynamical system.
 If gradients propagated back through a network vanish, the credit assignment role of backpropagation
 is lost, as information about small changes in states in the far past has no influence on future states.
 If gradients explode, gradient based optimization algorithms struggle to 
-traverse down a cost surface, because gradient-based optimization relies on smoothness of
-the objective: it assumes that a small change in the parameters will yield a small change in the objective function,
-an assumption which is violated when very large gradients arise. As the number of time steps
+traverse down a cost surface, because gradient-based optimization assumes small changes in parameters
+yield small changes in the objective function.
+%If gradients explode, gradient based optimization algorithms struggle to 
+%traverse down a cost surface, because gradient-based optimization relies on smoothness of
+%the objective: it assumes that a small change in the parameters will yield a small change in the objective function,
+%n assumption which is violated when very large gradients arise. 
+As the number of time steps
 considered in the sequence of states grows, the shrinking or expanding effects associated with the state-to-state
 transformation at individual time steps can grow exponentially, yielding respectively vanishing or exploding
 gradients. See~\citet{Pascanu2013} for a review.
@@ -96,8 +100,8 @@ We discuss a novel approach to constructing expressive unitary matrices as the c
 unitary matrices which require at most $\mathcal{O}(n \log n)$ computation and $\mathcal{O}(n)$ memory,
 when the state vector has dimension $n$. These are
 unlike general matrices, which require $\mathcal{O}(n^2)$ computation and memory. 
-Complex valued representation has been considered for deep representation learing in the past, 
-there has been limited success and adoption of it \citep{hirose2003complex, zimmermann2011comparison}. 
+Complex valued representation has been considered for neural networks in the past, 
+but with limited success and adoption \citep{hirose2003complex, zimmermann2011comparison}. 
 We hope our findings will change this.
 
 Whilst our model uses complex valued matrices and parameters, all
@@ -178,22 +182,10 @@ like gradient clipping unnecessary \citep{Pascanu2013}.
 To the best of our knowledge, this analysis is a novel contribution and the first time a 
 neural network architecture has been mathematically proven to avoid exploding gradients. 
 
-
-%Notes: 
-%
-%- Vanishing and exploding gradients.
-%
-%- Support for orthogonal matrices. Results of Quoc's stuff with orthogonality.
-%
-%- Prove lower bound for orthogonal matrices up to jacobian matrix norms.
-%
-%- Introduce ReLUs as a natural solution to norm of D to be 1. Support for relus, why orthogonality + relus make sense (additive growth at most).
-%
-%- 
-
+\vspace{-1mm}
 \section{Unitary Evolution RNNs}
 \label{sec:uRNN}
-
+\vspace{-1mm}
 Unitary matrices generalize orthogonal matrices to the complex domain.
 A complex valued, norm preserving matrix,
 $\matr{U}$, is called a \textit{unitary} matrix and is such that 
@@ -222,7 +214,7 @@ method which can be used to efficiently span a large set of unitary matrices.
 Writing $\lambda_j = e^{i w_j}$ with $w_j \in \RR$, a naive method to learn a unitary matrix would be to
 fix a basis of eigenvectors $\matr{V} \in \mathbb{C}^{n \times n}$ and set
 \begin{equation} \matr{W} = \matr{V} \matr{D} \matr{V}^{*} , \end{equation}
-
+\vspace{-0.5mm}
 where $\matr{D}$ is a diagonal such that $\matr{D}_{j,j} = \lambda_j$. 
 
 Lemma \ref{lemma} informs us how to construct a real orthogonal matrix, $\matr{W}$.
@@ -241,9 +233,9 @@ memory and computation requirements to $\mathcal{O}(n)$, however, $\matr{W}$ wou
 and have poor representation capacity.
 
 We propose an alternative strategy to parameterize unitary matrices. 
-Since the product of unitary matrices is itself a unitary matrix, our idea involves
-composing several simple, parameteric, unitary matrices to construct a single, expressive unitary matrix.
-The four types of unitary building blocks considered are 
+Since the product of unitary matrices is itself a unitary matrix, we 
+compose several simple, parameteric, unitary matrices to construct a single, expressive unitary matrix.
+The four unitary building blocks considered are 
 
 \begin{itemize}
   \item $\matr{D}$, a diagonal matrix with $\matr{D}_{j,j} = e^{i w_j}$, with parameters $w_j \in \RR$,
@@ -270,28 +262,29 @@ information necessarily has to be eliminated when mapping a long sequence to a f
 
 We call any RNN architecture which uses a unitary hidden to hidden matrix a \textit{unitary evolution RNN}
 (uRNN). After experimenting with several structures, we settled on the following composition
-
-\begin{equation} \matr{W} = \matr{D}_3 \matr{R}_2 \mathcal{F}^{-1} \matr{D}_2 \matr{\Pi} \matr{R}_1 \mathcal{F} \matr{D}_1 .\end{equation}
-
+\vspace{-0.5mm}
+\begin{equation} 
+\matr{W} = \matr{D}_3 \matr{R}_2 \mathcal{F}^{-1} \matr{D}_2 \matr{\Pi} \matr{R}_1 \mathcal{F} \matr{D}_1 .
+\end{equation}
+\vspace{-0.5mm}
 Whilst each but the permutation matrix is complex, we parameterize and represent them with real numbers
 for implementation purposes. When the final cost is real and differentiable, we may perform gradient descent 
 optimization to learn the parameters.
 \cite{dfc} construct a real valued, non-orthogonal matrix using a similar parameterization with the motivation
 of parameter reduction by an order of magnitude on an industrial sized network. This combined with earlier
 work \citep{fastfood} suggests that it is possible to create highly expressive matrices by composing simple
-matrices with few parameters.
-
-In the following section, we explain details on how to implement our model and illustrate how we bypass the
+matrices with few parameters. In the following section, we explain details on how to implement our model 
+and illustrate how we bypass the
 potential difficulties of working in the complex domain.
 
 \section{Architecture details}
 \label{sec:impl}
-
+\vspace{-0.1mm}
 In this section, we describe the nonlinearity we used, how we incorporate real valued inputs 
 with complex valued hidden units and map from complex hidden states to real outputs. 
-
+\vspace{-0.1mm}
 \subsection{Complex hidden units}
-
+\vspace{-0.1mm}
 Our implementation represents all complex numbers using real values in terms of their
 real and imaginary parts. Under this framework, we sidestep the lack of support for complex numbers 
 by most deep learning frameworks. Consider multiplying the complex weight matrix 
@@ -300,7 +293,7 @@ $\matr{A}, \matr{B}, x, y$ are real.
 It is trivially true that $\matr{W}h = (\matr{A}x - \matr{B}y) + i (\matr{A}y + \matr{B}x)$.
 When we represent $v \in \CC^n$ as $\big(Re(v)^\top, Im(v)^\top \big)^\top \in \RR^{2n}$ , we
 compute complex matrix vector products with real numbers as follows
-
+\vspace{-0.2mm}
 \begin{equation} \begin{pmatrix} Re(\matr{W}h) \\ Im(\matr{W}h) \end{pmatrix}  
 = \begin{pmatrix} \matr{A} & -\matr{B} \\ \matr{B} & \ \ \ 
 \matr{A} \end{pmatrix} \begin{pmatrix} Re(h) \\ Im(h) \end{pmatrix} .
@@ -312,7 +305,7 @@ $\alpha, \beta : \RR^n \rightarrow \RR^n$.
 This allows us to implement everything using real valued operations, compatible with any
 any deep learning framework with automatic differentiation such as Theano \citep{Fred2010}.
 
-\subsection{Input to hidden and the nonlinearity}
+\subsection{Input to Hidden, Nonlinearity, Hidden to Output}
 
 As is the case with most recurrent networks, our uRNN follows the same hidden to hidden mapping as 
 equation \ref{nonlinoutput} with $\matr{V}_t = \matr{V}$ and $\matr{W}_t = \matr{W}$. 
@@ -330,11 +323,11 @@ and imaginary parts brutally impacts the
 phase of a complex number, making it difficult to learn structure.
 
 We speculate that maintaining the phase of hidden states may be important for storing information 
-across a large number of time steps, and our experimentation supported this claim.
+across a large number of time steps, and our experiments supported this claim.
 A variation of the ReLU that we name {\bf modReLU}, is what we 
-finally chose as our nonlinearity. The modReLU is a pointwise nonlinearity,  
+finally chose. It is a pointwise nonlinearity,  
 $\sigma_\mathrm{modReLU} (z) : \CC \rightarrow \CC$, which
-affects only the absolute value of a complex number, and we define it as 
+affects only the absolute value of a complex number, defined as 
 \begin{equation} \sigma_\mathrm{modReLU} (z) = 
 \left\{
   \begin{array}{ll}
@@ -349,24 +342,23 @@ we learn $n_h$ nonlinearity bias parameters, one per dimension.
 Note that the modReLU is similar to the ReLU in spirit, in fact more concretely
 $\sigma_\mathrm{modReLU}(z) = \sigma_\mathrm{ReLU}(|z| + b) \frac{z}{|z|}$. 
 
-\subsection{Hidden to output}
-
 To map hidden states to output, we define a matrix $\matr{U} \in \RR^{n_o \times 2n_h}$, 
 where $n_o$ is the output dimension. We calculate a linear output as
+\vspace{-0.5mm}
 \begin{equation} o_t = \matr{U} \begin{pmatrix} Re(h_t) \\ Im(h_t) \end{pmatrix} + b_o , \end{equation}
-
+\vspace{-0.25mm}
 where $b_o \in \RR^{n_o}$ is the output bias. 
 The linear output is real valued ($o_t \in \RR^{n_o}$) and can be used for prediction and loss function 
 calculation akin to typical neural networks (e.g. it may be passed through a softmax which is used for 
 cross entropy calculation for classification tasks).
 
-
+\vspace{-1mm}
 \subsection{Initialization}
 
 Due to the stability of the norm preserving operations of our network, we found that performance was
 not very sensitive to initialization of parameters.
 For full disclosure and reproducibility, we explain our initialization strategy for each parameter below.
-
+\vspace{-0.25mm}
 \begin{itemize}
   \item We initialize $\matr{V}$ and $\matr{U}$ (the input and output matrices) as in \cite{Glorotinit},
   with weights sampled independently from uniforms, $\mathcal{U}\left[-\frac{\sqrt{6}}{\sqrt{n_{in}+ n_{out}}}, \frac{\sqrt{6}}{\sqrt{n_{in}+ n_{out}}}\right]$.
@@ -413,7 +405,6 @@ gradients. Gradient clipping was unnecessary for the uRNN.
 
 \begin{figure}[t!]
   \centering
-  \label{fig1} 
   \begin{minipage}[b]{0.5\linewidth}
     %\centering
     \includegraphics[scale=0.25]{figures/memory_100.jpeg}
@@ -434,6 +425,7 @@ gradients. Gradient clipping was unnecessary for the uRNN.
    The LSTM is able to beat the baseline only for $100$ times steps. Conversely the uRNN 
     is able to completely solve each time length in very few training iterations,
     without getting stuck at the baseline.}
+  \label{fig1} 
 \end{figure}
 
 Recurrent networks have been known to have trouble remembering information about inputs seen
@@ -468,7 +460,6 @@ with the results of \cite{NTM}, in which poor performance is reported for the LS
 copying memory problem.
 
 \begin{figure}[t!] 
-  \label{fig2} 
   \begin{minipage}[b]{0.5\linewidth}
     \centering
     \includegraphics[scale=0.25]{figures/adding_100.jpeg}
@@ -488,6 +479,7 @@ copying memory problem.
   \caption{Results of the adding problem for $T=100, 200, 400, 750$. The RNN with tanh
 	  is not able to beat the baseline for any time length. The LSTM and the uRNN show similar 
 	  performance across time lengths, consistently beating the baseline.}
+  \label{fig2} 
 \end{figure}
 
 The uRNN consistently achieves perfect performance in relatively few iterations, even when having to recall
@@ -526,10 +518,10 @@ Neither of the two models came close to either the uRNN or the LSTM in performan
 The stark difference in our findings are best explained by our use of RMSprop with significantly higher 
 learning rates ($10^{-3}$ as opposed to $10^{-8}$) than \cite{Quoc2015} use for SGD with momentum.
 
+\vspace{-0.25mm}
 \subsection{Pixel-by-pixel MNIST}
 
 \begin{figure}[t!] 
-  \label{fig3} 
   \begin{minipage}[b]{0.5\linewidth}
     \centering
     \includegraphics[scale=0.25]{figures/mnist.jpeg}
@@ -543,15 +535,14 @@ learning rates ($10^{-3}$ as opposed to $10^{-8}$) than \cite{Quoc2015} use for 
 	    that the LSTM requires. The LSTM performs better on MNIST classification, 
 	    but the uRNN outperforms on the more complicated task
 	    of permuted pixels.}
+  \label{fig3} 
 \end{figure}
 
 
 In this task, suggested by \cite{Quoc2015}, algorithms are fed pixels of MNIST \citep{MNIST} sequentially and required to output a 
 class label at the end. We consider two tasks: one where pixels are read in order (from left to right,
 bottom to top) and one where the pixels are all randomly permuted using the same randomly generated
-permutation matrix.
-
-The same model architectures as for the adding problem were used for this task, except we now use a 
+permutation matrix. The same model architectures as for the adding problem were used for this task, except we now use a 
 softmax for category classification. We ran the optimization algorithms until convergence of the 
 mean categorical cross entropy on test data, and plot test accuracy in Figure~\ref{fig3}.
 
@@ -561,7 +552,6 @@ test accurracy versus 95.1\% for the uRNN.
 However, when we permute the ordering of the pixels, the uRNN dominates with 91.4\% of accuracy in 
 contrast to the 88\% of the LSTM, despite having less than a quarter of the parameters. 
 The uRNN therefore achieves state of the art performance on the task of classifying permuted MNIST pixels.
-
 This result is also state of the art on this task, compared to IRNN \citep{Quoc2015}, which reaches 
 close to 82\% but after 1 million training iterations. Notice that uRNN reaches convergence in less 
 than 20 thousand iterations, while it takes the LSTM from 5 to 10 times as many to finish learning.
@@ -576,7 +566,6 @@ LSTM is better suited to more local sequence structure tasks.
 \subsection{Exploratory experiments}
 
 \begin{figure}[t!] 
-  \label{fig:gradnorms} 
   \begin{minipage}[b]{0.25\linewidth}
     \centering
     \includegraphics[scale=0.125]{figures/grads_0.jpeg}
@@ -593,9 +582,15 @@ LSTM is better suited to more local sequence structure tasks.
     \centering
     \includegraphics[scale=0.125]{figures/hdiff.jpeg}
   \end{minipage}
-  \caption{Norms of the gradients with respect to hidden states i.e. 
-   $\norm{\frac{\partial C}{\partial h_t}}$. The gradient norms of uRNNs do not decay
-   as fast as for other models as training progresses.}
+  \caption{From left to right. Norms of the gradients with respect to hidden states i.e.  
+   $\norm{\frac{\partial C}{\partial h_t}}$ at (i) beginning of training, (ii) after 100 iterations.
+   (iii) Norms of the hidden states and (iv) $L_2$ distance between hidden states and final hidden state.
+   The gradient norms of uRNNs do not decay as fast as for other models as training progresses.
+uRNN hidden state norms stay much more consistent over time than the LSTM. 
+         LSTM hidden states stay almost the same after a number of time steps, 
+         suggesting that it is not able to use new input information.
+}
+  \label{fig:gradnorms} 
 \end{figure}
 
 \paragraph{Norms of hidden state gradients.} As discussed in Section~\ref{sec:ortho}, key to being able to learn long term 
@@ -615,7 +610,7 @@ to longer dependencies. In our experiments, it is clear that the uRNN does not s
 We took the uRNN and LSTM models trained on the adding problem with $T=200$, and computed 
 a forward pass with newly generated data for the adding problem with $T=1000$. In order to show saturation
 effects, we plot the norms of the hidden states and the $L_2$ distance between each state and the last in
-Figure~\ref{fig:saturation}.    
+Figure~\ref{fig:gradnorms}.    
 
 Notice that whilst the norms of hidden states in the uRNN grow very steadily over time, in the LSTM
 they grow very fast, and then stay constant after about $500$ time steps. This behaviour may
@@ -632,9 +627,9 @@ first sample, as it was unable to
 incorporate any more information by the time it reached the second, due to 
 saturation of the hidden states.   
 
-
+\vspace{-2.5mm}
 \section{Discussion}
-
+\vspace{-1mm}
 There are a plethora of further ideas that may be explored from our findings, both with regards to 
 learning representation and efficient implementation. For example, one hurdle of modeling long sequences 
 with recurrent networks is the requirement of storing all hidden state values for the purpose of gradient
