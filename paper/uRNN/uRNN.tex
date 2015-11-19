@@ -81,7 +81,7 @@ parametrized dynamical systems, several heuristics have been found in recent yea
 reduce its effect, such as the use of self-loops and gating units in the LSTM~\citep{LSTM}
 and GRU~\citep{Cho2014a} recurrent architectures.
 Recent work also supports the idea of using \textit{orthogonal} weight matrices to assist optimization  
-\citep{Saxe2014} \citep{Quoc2015}.
+\citep{Saxe2014, Quoc2015}.
 
 
 In this paper, we explore the use of orthogonal and unitary matrices in recurrent neural networks.
@@ -398,8 +398,7 @@ long term dependencies and exhibits qualitatively different learning properties 
  
 We chose a handful of tasks to evaluate the performance of the various models.
 The tasks were especially created to be be pathologically hard, and have been used 
-as benchmarks for testing the ability of a model to capture long-term memory \citep{LSTM} \citep{Quoc2015} \citep{NTM}
-\citep{HF}
+as benchmarks for testing the ability of a model to capture long-term memory \citep{LSTM, Quoc2015, NTM, HF}
 
 We tried a handful of optimization algorithms for the various models we wished to compare. 
 RMSProp optimization \citep{RMSPROP} tended to lead to fastest convergence and is what we stuck to for all
