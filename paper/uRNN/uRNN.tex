@@ -485,7 +485,7 @@ In this problem, the input consists of two sequences of length $T$. The first se
 With some elemntary calculations, we can see that predicting 1 regardless of the input sequence gives in expectation 0.167 of error, so we use this as a baseline.
 
 \begin{figure}[ht] 
-  \label{ fig2} 
+  \label{fig2} 
   \begin{minipage}[b]{0.5\linewidth}
     \centering
     \includegraphics[scale=0.25]{figures/memory_100.jpeg}
@@ -522,7 +522,7 @@ The RNN with tanh and IRNN weren't able to go below baseline on any of the exper
 On this experiment, we feed the neural network the pixels of MNIST \citep{MNIST} images in a sequence, and after this we ask it to recognize the digit. There are two variants of this task. The first one, we feed the digits in order (left to right and up to down). On the second one, we feed the digits in a random fixed permuted order. Since the digit displayed on the image depends on almost every single pixel, there are several very long-term dependencies involved.
 
 \begin{figure}[ht] 
-  \label{ fig3} 
+  \label{fig3} 
   \begin{minipage}[b]{0.5\linewidth}
     \centering
     \includegraphics[scale=0.25]{figures/mnist.jpeg}
@@ -543,7 +543,47 @@ Also very interesting to show is the fact that the uRNN reaches convergence with
 Our intuition of why the uRNN does better than the LSTM on the permuted task and not on the first one follows. While the normal pixel-by-pixel task involves long-term memory between the inputs and the output, the permuted one involves long-term dependencies between \textbf{pixels}. This makes it necessary for the network to remember and understand complex relations between several objects that are inputed on very different times. This difference points in the direction that the uRNN might be better at learning stable memory representations for extended periods of time, while the LSTM might be better at memory-based complex reasoning.
 
 \subsection{Optimization experiments}
-Ian Good
+\subsubsection{Gradient propagation}
+As discussed in section 2, one of the most important features of learning long term dependencies is controlling $\frac{\partial C}{\partial h_t}$. In order to study how the different models propagate this quantity, we examined the norms of this gradients as a function of $t$. To do this, we run the models for the adding problem and calculate the gradients of the cost with respect to the hidden units at the beginning of training and after 100 iterations
+
+\begin{figure}[ht] 
+  \label{fig4} 
+  \begin{minipage}[b]{0.5\linewidth}
+    \centering
+    \includegraphics[scale=0.25]{figures/grads_0.jpeg}
+    \vspace{4ex}
+  \end{minipage}%%
+  \begin{minipage}[b]{0.5\linewidth}
+    \centering
+    \includegraphics[scale=0.25]{figures/grads_100.jpeg}
+    \vspace{4ex}
+  \end{minipage}
+  \caption{Gradient norms}
+\end{figure}
+
+We see in figure 4 the results. At first sight we see that during the begining of training, the uRNN propagates gradients perfectly, while the other models have exponentially vanishing gradients. This makes perfect sense, because since the biases of the uRNN are initialized to 0, the network starts as a linear network with a unitary weight matrix. If we look at the equations of section 2, this implies that the jacobian of the nonlinearity is the identity, and to get $\frac{\partial C}{\partial h_t}$ from $\frac{\partial C}{\partial h_T}$ we just multiply by unitary matrices, therefore preserving norm exactly. After 100 iterations of training, all networks start to get vanishing gradients problems, although the uRNN still propagates this information better than the rest.
+
+\subsubsection{Hidden state saturation}
+
+If a network needs to make predictions based on information spanning many time steps, then it necessary for it to incorporate new information for a very long time. In order to test the capacity of the network to keep incorporating new memories, we test the saturation of the hidden states. What this means is that if the hidden states of an RNN become constant after a certain amount of iterations, then it is clearly not going to change it's prediction based on this new information. The metric we designed to study this phenomenon is the euclidean distance between the hidden state at time $t$ and the final hidden state at time $T$. If $d(h_t, h_T)$ goes to zero quickly, then the information passed after that point wasn't incorporated by the network.
+
+\begin{figure}[ht] 
+\label{fig4} 
+\begin{minipage}[b]{0.5\linewidth}
+  \centering
+  \includegraphics[scale=0.25]{figures/grads_0.jpeg}
+  \vspace{4ex}
+\end{minipage}%%
+\begin{minipage}[b]{0.5\linewidth}
+  \centering
+  \includegraphics[scale=0.25]{figures/grads_100.jpeg}
+  \vspace{4ex}
+\end{minipage}
+\caption{Gradient norms}
+\end{figure}
+
+
+
 
 {\bf Acknowledgments}: We thank the developers of
 Theano~\cite{Fred2010} for % are you guys using blocks? nope :P
