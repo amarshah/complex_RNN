@@ -202,18 +202,23 @@ Unitary matrices generalize orthogonal matrices to the complex domain.
 A complex valued, norm preserving matrix,
 $\matr{U}$, is called a \textit{unitary} matrix and is such that 
 $\matr{U}^* \matr{U} = \matr{U} \matr{U}^* = \matr{I}$, where $\matr{U}^*$ is the conjugate transpose
-of $\matr{U}$.   
+of $\matr{U}$.  Directly parametrizing the set of unitary matrices in such a way that gradient-based
+optimization can be applied is not straightforward because a gradient step will typically yield
+a matrix that is not unitary, and projecting on the set of unitary matrix (e.g., by performing
+an eigendecomposition) generally costs $O(n^3)$ computation when $\matr{U}$ is $n \times n$.
 
 The most important feature of unitary and orthogonal matrices for our purpose is that they have eigenvalues
 $\lambda_j$ with absolute value 1. The following lemma, proved in \cite{linalgbook}, may shed light on a 
-method by which we may construct orthogonal matrices.
+method which can be used to efficiently span a large set of unitary matrices.
 
 \begin{lemma}
   A complex square matrix $\matr{W}$ is unitary if and only if it has an eigendecomposition of the form
-  $\matr{W} = \matr{V} \matr{D} \matr{V}^*$. Here, $\matr{V}, \matr{D} \in \mathbb{C}^{n \times n}$ are
+  $\matr{W} = \matr{V} \matr{D} \matr{V}^*$, where $^*$ denotes the conjugate transpose.
+  Here, $\matr{V}, \matr{D} \in \mathbb{C}^{n \times n}$ are
   complex matrices, where $\matr{V}$ is unitary, and $\matr{D}$ is a diagonal such that $|\matr{D}_{j,j}|=1$. 
   Furthermore, $\matr{W}$ is a real orthogonal matrix if and only if for every eigenvalue $\matr{D}_{j,j} 
-  = \lambda_j$ with eigenvector $v_j$, there is also an eigenvalue $\lambda_k = \overline{\lambda_j}$ with 
+  = \lambda_j$ with eigenvector $v_j$, there is also a complex conjugate
+  eigenvalue $\lambda_k = \overline{\lambda_j}$ with 
   corresponding eigenvector $v_k = \overline{v_j}$ .
 \label{lemma}
 \end{lemma}
