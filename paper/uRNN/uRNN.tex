@@ -191,7 +191,7 @@ $\matr{U}^* \matr{U} = \matr{U} \matr{U}^* = \matr{I}$, where $\matr{U}^*$ is th
 of $\matr{U}$.  Directly parametrizing the set of unitary matrices in such a way that gradient-based
 optimization can be applied is not straightforward because a gradient step will typically yield
 a matrix that is not unitary, and projecting on the set of unitary matrices (e.g., by performing
-an eigendecomposition) generally costs $O(n^3)$ computation when $\matr{U}$ is $n \times n$.
+an eigendecomposition) generally costs $\mathcal{O}(n^3)$ computation when $\matr{U}$ is $n \times n$.
 
 The most important feature of unitary and orthogonal matrices for our purpose is that they have eigenvalues
 $\lambda_j$ with absolute value 1. The following lemma, proved in \cite{linalgbook}, may shed light on a 
