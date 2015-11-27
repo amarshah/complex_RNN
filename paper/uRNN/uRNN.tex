@@ -141,7 +141,7 @@ then by the chain rule
 
 where $\matr{D}_{k+1} = diag(\sigma'(z_{k+1}))$ is the Jacobian matrix of the pointwise nonlinearity.
 
-In the following we define to the norm of a matrix to refer to the spectral radius norm (or operator 2-norm)
+In the following we define the norm of a matrix to refer to the spectral radius norm (or operator 2-norm)
 and the norm of a vector to mean $L_2$-norm. By definition of the operator norms, 
 for any matrices $\matr{A}, \matr{B}$ and vector $v$ we have $\norm{\matr{A}v} \leq \norm{\matr{A}} \norm{v}$ and $\norm{\matr{A}\matr{B}} \leq \norm{\matr{A}} \norm{\matr{B}}$.
 If the weight matrices $\matr{W}_k$ are norm preserving (i.e. orthogonal), then we {\bf{prove}}
@@ -506,7 +506,7 @@ Our results are shown in Figure~\ref{fig2}.
 
 The LSTM and uRNN models are able to convincingly beat the baseline up to $T=400$ time steps.
 Both models do well when $T=750$, but the mean squared error does not reach close to $0$.
-The uRNN achieves lower test error, but with more noise at testing. Despite having vastly more parameters,
+The uRNN achieves lower test error, but it's curve is more noisy. Despite having vastly more parameters,
 we monitored the LSTM performance to ensure no overfitting.
 
 The RNN with tanh and IRNN were not able to beat the baseline for any number of time steps. 
@@ -666,8 +666,8 @@ as LSTMs, typical RNNs, or RNNs initialized with the identity weight matrix (IRN
 
 
 {\bf Acknowledgments}: We thank the developers of
-Theano~\cite{Fred2010} for % are you guys using blocks? nope :P
-their great work. We thank NSERC, Compute Canada, Canada Research Chairs and CIFAR for their support.
+Theano~\citep{Fred2010} for % are you guys using blocks? nope :P
+their great work. We thank NSERC, Compute Canada, Canada Research Chairs and CIFAR for their support. We would also like to thank \c{C}aglar Gul\c{c}ehre, David Krueger, Soroush Mehri, Marcin Moczulski, Mohammad Pezeshki and Saizheng Zhang for helpful discussions, comments and code sharing.
 
 \bibliography{uRNN}
 \bibliographystyle{uRNN}
