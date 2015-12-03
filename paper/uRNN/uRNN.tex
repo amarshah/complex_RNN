@@ -513,8 +513,8 @@ The RNN with tanh and IRNN were not able to beat the baseline for any number of 
 \cite{Quoc2015} report that their RNN solve the problem for $T=150$ and the IRNN for $T=300$,
 but they require over a million iterations before they start learning. 
 Neither of the two models came close to either the uRNN or the LSTM in performance.
-The stark difference in our findings are best explained by our use of RMSprop with significantly higher 
-learning rates ($10^{-3}$ as opposed to $10^{-8}$) than \cite{Quoc2015} use for SGD with momentum.
+The stark differences in our findings may be explained by our use of RMSprop instead of
+SGD with momentum as in \cite{Quoc2015}.
 
 \vspace{-0.25mm}
 \subsection{Pixel-by-pixel MNIST}
