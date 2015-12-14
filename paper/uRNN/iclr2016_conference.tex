@@ -1,0 +1,54 @@
+\documentclass{article} % For LaTeX2e
+\usepackage{iclr2016_conference,times}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{graphicx}
+
+\title{\scalebox{0.95}{Unitary Evolution Recurrent Neural Networks}}
+
+
+\author{Martin Arjovsky \thanks{Indicates first authors. Ordering determined by coin flip.} \\
+Universidad de Buenos Aires\\
+\texttt{\{marjovsky\}@dc.uba.ar} \\
+\And
+Amar Shah$^*$ \\
+Cambridge University \\
+\texttt{\{as793\}@cam.ac.uk} \\
+\AND
+Yoshua Bengio \\
+Universite de Montr\'eal, CIFAR Senior Fellow\\
+\texttt{\{yoshua.bengio\}@gmail.com} \\
+}
+
+% The \author macro works with any number of authors. There are two commands
+% used to separate the names and addresses of multiple authors: \And and \AND.
+%
+% Using \And between authors leaves it to \LaTeX{} to determine where to break
+% the lines. Using \AND forces a linebreak at that point. So, if \LaTeX{}
+% puts 3 of 4 authors names on the first line, and the last on the second
+% line, try using \AND instead of \And before the third author name.
+
+\newcommand{\fix}{\marginpar{FIX}}
+\newcommand{\new}{\marginpar{NEW}}
+
+%\iclrfinalcopy % Uncomment for camera-ready version
+
+\begin{document}
+
+
+\maketitle
+
+\begin{abstract}
+Recurrent neural networks (RNNs) are notoriously difficult to train. When the eigenvalues of the hidden to hidden weight matrix
+deviate from absolute value 1, optimization becomes difficult due to the well studied issue of vanishing and exploding gradients, especially when trying to learn long-term dependencies.
+To circumvent this problem, we propose a new architecture that learns a unitary weight matrix, with eigenvalues
+of absolute value exactly 1. We construct an expressive unitary weight matrix by composing several structured matrices that act
+as building blocks with parameters to be learned. Optimization of this parameterization becomes feasible only when considering hidden
+states in the complex domain. We demonstrate the potential of this architecture by achieving state of the art in several hard tasks
+involving very long-term dependencies.
+
+\end{abstract}
+\bibliography{iclr2016_conference}
+\bibliographystyle{iclr2016_conference}
+
+\end{document}
