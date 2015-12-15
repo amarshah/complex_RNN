@@ -242,12 +242,12 @@ def LSTM(n_input, n_hidden, n_output, input_type='real', out_every_t=False, loss
     
     def recurrence(x_t, y_t, h_prev, state_prev, cost_prev, acc_prev,
                    W_i, W_f, W_c, W_o, U_i, U_f, U_c, U_o, V_o, b_i, b_f, b_c, b_o, out_mat, out_bias):
-
+        
         if loss_function == 'CE':
             x_t_W_i = W_i[x_t]
             x_t_W_c = W_c[x_t]
-            x_t_W_f = T.dot(x_t, W_f)
-            x_t_W_o = T.dot(x_t, W_o)
+            x_t_W_f = W_f[x_t]
+            x_t_W_o = W_o[x_t]
         else:
             x_t_W_i = T.dot(x_t, W_i)
             x_t_W_c = T.dot(x_t, W_c)
