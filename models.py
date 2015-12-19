@@ -67,10 +67,12 @@ def times_reflection(input, n_hidden, reflection):
 
     a = T.outer(input_re_reflect_re - input_im_reflect_im, reflect_re)
     b = T.outer(input_re_reflect_im + input_im_reflect_re, reflect_im)
-        
+    c = T.outer(input_re_reflect_re - input_im_reflect_im, reflect_im)
+    d = T.outer(input_re_reflect_im + input_im_reflect_re, reflect_re)
+         
     output = input
     output = T.inc_subtensor(output[:, :n_hidden], - 2. / vstarv * (a + b))
-    output = T.inc_subtensor(output[:, n_hidden:], - 2. / vstarv * (b - a))
+    output = T.inc_subtensor(output[:, n_hidden:], - 2. / vstarv * (d - c))
 
     return output    
 
