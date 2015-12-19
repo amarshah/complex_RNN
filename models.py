@@ -1,9 +1,3 @@
-"""
-TO DO: x and y different type
-"""
-
-
-
 import theano, cPickle
 import theano.tensor as T
 import numpy as np
@@ -88,14 +82,15 @@ def compute_cost_t(lin_output, loss_function, y_t):
 
     return cost_t, acc_t
 
+
 def initialize_data_nodes(loss_function, input_type, out_every_t):
     x = T.tensor3() if input_type == 'real' else T.matrix(dtype='int32')
     if loss_function == 'CE':
         y = T.matrix(dtype='int32') if out_every_t else T.vector(dtype='int32')
     else:  
         y = T.tensor3() if out_every_t else T.matrix()
-    return x, y
-        
+    return x, y        
+
 
 
 def IRNN(n_input, n_hidden, n_output, input_type='real', out_every_t=False, loss_function='CE'):
